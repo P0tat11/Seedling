@@ -3,56 +3,46 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Seedling — Kid Entrepreneurship & AI POS</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <title>Seedling — Kid Entrepreneurship & AI Demand Forecaster</title>
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif']
+            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif']
           }
         }
       }
     };
   </script>
-  <style type="text/tailwindcss">
-    @layer base {
-      html, body {
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        margin: 0;
-        padding: 0;
-        overflow-x: hidden;
-        -webkit-font-smoothing: antialiased;
-      }
-      button, input, select, textarea {
-        font-family: inherit;
-      }
-    }
-  </style>
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <!-- React 18 & Babel Standalone -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+  </style>
 </head>
-<body class="bg-[#FFFDF7] text-slate-900 antialiased">
+<body class="bg-[#FFFDF7] text-slate-900">
   <div id="root"></div>
 
   <script type="text/babel">
     const { useState, useEffect, useMemo, useRef } = React;
 
-    // ========================================================================
-    // OLLAMA CLOUD CONFIG (KEPT IN CODE, HIDDEN FROM UI)
-    // ========================================================================
-    const OLLAMA_API_URL = 'https://ollama.com/v1/chat/completions';
-    const OLLAMA_MODEL_NAME = 'deepseek-v4.1-flash';
-    const OLLAMA_API_KEY = '5328c6d502ac457c9fd04bd5f5260460.TQy8arLIt0cE10Xvv8X67BMY';
-
-    // ========================================================================
+    // ============================================================================
     // INLINE KID-SAFE SVG ICONS
-    // ========================================================================
+    // ============================================================================
     const IconBase = ({ className = 'w-4 h-4', children }) => (
       <svg
         viewBox="0 0 24 24"
@@ -156,10 +146,13 @@
       </IconBase>
     );
 
-    // ========================================================================
-    // CONSTANTS: THEMES, PIXEL MASCOTS, CATEGORIES & DAY OF WEEK
-    // ========================================================================
+    // ============================================================================
+    // CONSTANTS: THEMES, MASCOTS, CATEGORIES, WEATHER & OLLAMA CLOUD CONFIG
+    // ============================================================================
     const STORAGE_KEY = 'seedling_kidbiz_state_v2';
+    const OLLAMA_API_URL = 'https://ollama.com/v1/chat/completions';
+    const OLLAMA_MODEL_NAME = 'deepseek-v4.1-flash';
+    const OLLAMA_API_KEY = '5328c6d502ac457c9fd04bd5f5260460.TQy8arLIt0cE10Xvv8X67BMY';
 
     const THEMES = {
       mint: {
@@ -260,6 +253,12 @@
       { id: 'toys', label: 'Art, Cards & Toys', emoji: '🎨', avgUnitCost: 0.85 }
     ];
 
+    const WEATHER_OPTIONS = [
+      { id: 'sunny', label: '☀️ Sunny & Warm', demandMult: 1.25 },
+      { id: 'cloudy', label: '⛅ Partly Cloudy', demandMult: 1.0 },
+      { id: 'rainy', label: '🌧️ Rainy / Cool', demandMult: 0.65 }
+    ];
+
     const DAY_OF_WEEK_OPTIONS = [
       { id: 'sat', label: 'Saturday (Weekend)', demandMult: 1.3 },
       { id: 'sun', label: 'Sunday (Weekend)', demandMult: 1.2 },
@@ -267,9 +266,194 @@
       { id: 'weekday', label: 'School Weekday', demandMult: 0.82 }
     ];
 
-    // ========================================================================
-    // KID-SAFE PROFANITY & WORKAROUND CENSOR FILTER
-    // ========================================================================
+    // ============================================================================
+    // LIVE EXTERNAL WEATHER SERVICE (OPEN-METEO — DEFAULT: EDISON, NJ)
+    // ============================================================================
+    function mapWeatherCodeToCondition(code, tempF) {
+      if (
+        (code >= 51 && code <= 67) ||
+        (code >= 71 && code <= 86) ||
+        (code >= 95 && code <= 99) ||
+        tempF < 52
+      ) {
+        return 'rainy';
+      }
+      if ((code === 0 || code === 1) && tempF >= 64) {
+        return 'sunny';
+      }
+      return 'cloudy';
+    }
+
+    async function fetchExternalWeatherForecast(cityName = 'Edison, NJ') {
+      let lat = 40.5187;
+      let lon = -74.4121;
+      let locationLabel = 'Edison, NJ';
+
+      const cleanCity = (cityName || '').trim();
+      if (cleanCity && cleanCity.toLowerCase() !== 'edison, nj' && cleanCity.toLowerCase() !== 'edison') {
+        try {
+          const geoRes = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cleanCity)}&count=1&language=en&format=json`
+          );
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            if (geoData?.results?.[0]) {
+              lat = geoData.results[0].latitude;
+              lon = geoData.results[0].longitude;
+              locationLabel = `${geoData.results[0].name}${
+                geoData.results[0].admin1 ? ', ' + geoData.results[0].admin1 : ''
+              }`;
+            }
+          }
+        } catch (e) {}
+      }
+
+      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max&temperature_unit=fahrenheit&timezone=auto&forecast_days=2`;
+      const res = await fetch(weatherUrl);
+      if (!res.ok) throw new Error('Weather API unavailable');
+      const data = await res.json();
+
+      const todayTemp = Math.round(data.current?.temperature_2m ?? 68);
+      const todayCode = data.current?.weather_code ?? 1;
+      const tomorrowTemp = Math.round(data.daily?.temperature_2m_max?.[1] ?? todayTemp);
+      const tomorrowCode = data.daily?.weather_code?.[1] ?? todayCode;
+
+      const todayCondition = mapWeatherCodeToCondition(todayCode, todayTemp);
+      const tomorrowCondition = mapWeatherCodeToCondition(tomorrowCode, tomorrowTemp);
+
+      const isGoodToday = todayCondition === 'sunny';
+      const isBadToday = todayCondition === 'rainy';
+      const todayVerdict = isGoodToday
+        ? `Good weather today (${todayTemp}°F, clear & warm — great for outdoor shoppers!)`
+        : isBadToday
+        ? `Tough weather today (${todayTemp}°F, chilly or wet — fewer people walking outside)`
+        : `Okay weather today (${todayTemp}°F, mild & partly cloudy)`;
+
+      return {
+        locationLabel,
+        todayTemp,
+        todayCondition,
+        todayVerdict,
+        isGoodToday,
+        isBadToday,
+        tomorrowTemp,
+        tomorrowCondition
+      };
+    }
+
+    // ============================================================================
+    // PRODUCT-SEASON FIT & SMART REPLACEMENT ENGINE
+    // ============================================================================
+    function analyzeProductSeasonFit(products, tempF, conditionId) {
+      const month = new Date().getMonth();
+      const isWinterOrCold = tempF < 55 || month === 11 || month === 0 || month === 1;
+      const isHotOrSummer = tempF >= 76 || (month >= 5 && month <= 7 && tempF >= 68);
+      const isRainy = conditionId === 'rainy';
+
+      const summerKeywords = [
+        'snowcone', 'snow cone', 'shaved ice', 'lemonade', 'iced', 'ice cream',
+        'popsicle', 'slush', 'smoothie', 'cold brew', 'watermelon', 'soda'
+      ];
+      const winterKeywords = [
+        'hot cocoa', 'hot chocolate', 'cider', 'coffee', 'tea', 'soup',
+        'warm', 'scarf', 'mitten', 'beanie', 'chili'
+      ];
+
+      let coldItem = null;
+      let hotItem = null;
+
+      for (const p of products) {
+        const lower = p.name.toLowerCase();
+        if (summerKeywords.some((k) => lower.includes(k))) coldItem = p;
+        if (winterKeywords.some((k) => lower.includes(k))) hotItem = p;
+      }
+
+      if (coldItem && isWinterOrCold) {
+        return {
+          status: 'mismatch_cold',
+          itemName: coldItem.name,
+          headline: `Don't sell ${coldItem.name} in ${tempF}°F weather!`,
+          explanation: `${coldItem.name} is a warm-weather treat, and at ${tempF}°F customers want cozy items instead.`,
+          priceDirection: 'avoid',
+          priceDelta: 0,
+          suggestedItems: [
+            { name: 'Hot Cocoa Cup', price: 2.5, unitCost: 0.45, reason: `Cozy bestseller for ${tempF}°F weather` },
+            { name: 'Warm Chocolate Chip Cookies', price: 2.0, unitCost: 0.4, reason: 'Easy indoor/outdoor winter treat' },
+            { name: 'Friendship Bracelets', price: 3.0, unitCost: 0.5, reason: 'All-season craft with high profit margin' }
+          ]
+        };
+      }
+
+      if (hotItem && isHotOrSummer) {
+        return {
+          status: 'mismatch_hot',
+          itemName: hotItem.name,
+          headline: `Skip ${hotItem.name} in ${tempF}°F heat!`,
+          explanation: `At ${tempF}°F, shoppers crave cold refreshments instead of hot drinks.`,
+          priceDirection: 'avoid',
+          priceDelta: 0,
+          suggestedItems: [
+            { name: 'Ice-Cold Lemonade', price: 2.5, unitCost: 0.35, reason: `High-demand thirst quencher at ${tempF}°F` },
+            { name: 'Rainbow Snow Cones', price: 3.0, unitCost: 0.4, reason: 'Top summer profit maker' },
+            { name: 'Fruit Popsicles', price: 2.0, unitCost: 0.45, reason: 'Fast grab-and-go warm weather treat' }
+          ]
+        };
+      }
+
+      if (coldItem && isHotOrSummer) {
+        return {
+          status: 'peak_match',
+          itemName: coldItem.name,
+          headline: `Peak Season for ${coldItem.name}! Raise price +$0.50`,
+          explanation: `${tempF}°F heat creates strong demand for ${coldItem.name}—customers gladly pay a little more!`,
+          priceDirection: 'raise',
+          priceDelta: 0.5,
+          suggestedItems: []
+        };
+      }
+
+      if (hotItem && isWinterOrCold) {
+        return {
+          status: 'peak_match',
+          itemName: hotItem.name,
+          headline: `Peak Season for ${hotItem.name}! Raise price +$0.50`,
+          explanation: `Chilly ${tempF}°F weather boosts demand for ${hotItem.name}, letting you raise margins!`,
+          priceDirection: 'raise',
+          priceDelta: 0.5,
+          suggestedItems: []
+        };
+      }
+
+      if (isRainy) {
+        return {
+          status: 'rainy_adjust',
+          itemName: products[0]?.name || 'your menu',
+          headline: `Rainy Day Alert (${tempF}°F) — Offer a Small Deal or Indoor Craft`,
+          explanation: 'Rainy weather lowers sidewalk traffic, so a small discount or take-home kit helps close sales.',
+          priceDirection: 'lower',
+          priceDelta: -0.25,
+          suggestedItems: [
+            { name: 'DIY Slime Kit', price: 3.5, unitCost: 0.65, reason: 'Kids love indoor activities on rainy days' },
+            { name: 'Mini Brownie Pack', price: 2.25, unitCost: 0.45, reason: 'Great take-home comfort snack' },
+            { name: 'Sticker Mystery Pack', price: 2.0, unitCost: 0.3, reason: 'Weather-proof & super high profit' }
+          ]
+        };
+      }
+
+      return {
+        status: 'neutral_good',
+        itemName: products[0]?.name || 'your menu',
+        headline: `Good Seasonal Fit (${tempF}°F)`,
+        explanation: `Your menu fits ${tempF}°F weather well! Small price tweaks can maximize daily profit.`,
+        priceDirection: 'optimize',
+        priceDelta: 0.25,
+        suggestedItems: []
+      };
+    }
+
+    // ============================================================================
+    // KID-SAFE PROFANITY & SLANG CENSOR FILTER
+    // ============================================================================
     const BANNED_TERMS = [
       'fuck', 'shit', 'bitch', 'asshole', 'bastard', 'damn', 'crap', 'dick', 'cock',
       'pussy', 'cunt', 'whore', 'slut', 'fag', 'faggot', 'nigger', 'nigga', 'retard',
@@ -335,9 +519,9 @@
         .join('');
     }
 
-    // ========================================================================
-    // AI CARTOON PRODUCT STICKER GENERATOR
-    // ========================================================================
+    // ============================================================================
+    // CARTOON PRODUCT STICKER GENERATOR
+    // ============================================================================
     function buildCustomCartoonStickerDataUrl(itemName) {
       const lower = (itemName || 'Item').toLowerCase();
       let bgTop = '#E0F2FE';
@@ -360,28 +544,31 @@
           <circle cx="70" cy="66" r="3" fill="#0F172A"/>
           <path d="M55 71 Q60 76 65 71" stroke="#0F172A" stroke-width="3" fill="none" stroke-linecap="round"/>
         `;
-      } else if (lower.includes('snow') || lower.includes('ice') || lower.includes('popsicle') || lower.includes('cone')) {
+      } else if (lower.includes('cocoa') || lower.includes('hot chocolate') || lower.includes('coffee') || lower.includes('tea') || lower.includes('cider')) {
+        bgTop = '#FEF3C7';
+        bgBot = '#FFEDD5';
+        detailSvg = `
+          <path d="M46 28 Q42 20 48 14" stroke="#94A3B8" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          <path d="M62 28 Q58 20 64 14" stroke="#94A3B8" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          <path d="M84 48 H94 A10 10 0 0 1 94 72 H84" fill="none" stroke="#0F172A" stroke-width="4"/>
+          <rect x="34" y="40" width="50" height="48" rx="10" fill="#F43F5E" stroke="#0F172A" stroke-width="4"/>
+          <ellipse cx="59" cy="42" rx="22" ry="6" fill="#78350F"/>
+          <circle cx="52" cy="41" r="4" fill="#FFFFFF"/>
+          <circle cx="64" cy="42" r="3.5" fill="#FFFFFF"/>
+          <circle cx="50" cy="64" r="3" fill="#0F172A"/>
+          <circle cx="68" cy="64" r="3" fill="#0F172A"/>
+          <path d="M55 70 Q60 75 64 70" stroke="#0F172A" stroke-width="3" fill="none" stroke-linecap="round"/>
+        `;
+      } else if (lower.includes('snow') || lower.includes('ice') || lower.includes('popsicle') || lower.includes('slush')) {
         bgTop = '#E0F2FE';
         bgBot = '#FCE7F3';
         detailSvg = `
-          <polygon points="44,62 76,62 60,98" fill="#FDE68A" stroke="#0F172A" stroke-width="4" stroke-linejoin="round"/>
+          <polygon points="40,56 80,56 60,102" fill="#FDE68A" stroke="#0F172A" stroke-width="4" stroke-linejoin="round"/>
           <circle cx="60" cy="48" r="24" fill="#38BDF8" stroke="#0F172A" stroke-width="4"/>
-          <path d="M38 44 A24 24 0 0 1 82 44 Z" fill="#F43F5E"/>
+          <path d="M38 44 A22 22 0 0 1 82 44 Z" fill="#F472B6"/>
           <circle cx="52" cy="48" r="3" fill="#0F172A"/>
           <circle cx="68" cy="48" r="3" fill="#0F172A"/>
-          <path d="M56 54 Q60 59 64 54" stroke="#0F172A" stroke-width="3" fill="none" stroke-linecap="round"/>
-        `;
-      } else if (lower.includes('cocoa') || lower.includes('hot') || lower.includes('coffee') || lower.includes('tea') || lower.includes('cider')) {
-        bgTop = '#FFEDD5';
-        bgBot = '#FEF3C7';
-        detailSvg = `
-          <path d="M46 28 Q42 20 48 14" stroke="#94A3B8" stroke-width="3" fill="none" stroke-linecap="round"/>
-          <path d="M62 28 Q58 20 64 14" stroke="#94A3B8" stroke-width="3" fill="none" stroke-linecap="round"/>
-          <rect x="36" y="38" width="44" height="48" rx="10" fill="#FB7185" stroke="#0F172A" stroke-width="4"/>
-          <path d="M80 48 C94 48, 94 74, 80 74" stroke="#0F172A" stroke-width="4" fill="none"/>
-          <circle cx="51" cy="60" r="3" fill="#0F172A"/>
-          <circle cx="65" cy="60" r="3" fill="#0F172A"/>
-          <path d="M54 67 Q58 72 62 67" stroke="#0F172A" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M56 53 Q60 57 64 53" stroke="#0F172A" stroke-width="2.8" fill="none" stroke-linecap="round"/>
         `;
       } else if (lower.includes('lemon') || lower.includes('juice') || lower.includes('drink')) {
         bgTop = '#FEF9C3';
@@ -447,149 +634,9 @@
       return buildCustomCartoonStickerDataUrl(itemName);
     }
 
-    // ========================================================================
-    // LIVE EXTERNAL WEATHER FETCHER (OPEN-METEO API — EDISON, NJ DEFAULT)
-    // ========================================================================
-    function decodeOpenMeteoWeather(code, tempF) {
-      const isRainOrStorm =
-        (code >= 51 && code <= 67) ||
-        (code >= 71 && code <= 86) ||
-        (code >= 95 && code <= 99);
-      const isClearOrPartlyCloudy = code >= 0 && code <= 2;
-
-      if (isRainOrStorm) {
-        return {
-          weatherId: 'rainy',
-          emoji: '🌧️',
-          label: `🌧️ Rainy / Wet (${Math.round(tempF)}°F)`,
-          quality: 'bad',
-          summary: `Weather looks rainy and wet right now (${Math.round(tempF)}°F) — foot traffic outdoors will be slower today.`
-        };
-      }
-      if (tempF < 48) {
-        return {
-          weatherId: 'cloudy',
-          emoji: '❄️',
-          label: `🧥 Chilly (${Math.round(tempF)}°F)`,
-          quality: 'bad',
-          summary: `It's chilly outside (${Math.round(tempF)}°F) — cold treats won't sell well, so warm cozy items work much better!`
-        };
-      }
-      if (isClearOrPartlyCloudy && tempF >= 62) {
-        return {
-          weatherId: 'sunny',
-          emoji: '☀️',
-          label: `☀️ Sunny & Warm (${Math.round(tempF)}°F)`,
-          quality: 'good',
-          summary: `Today's weather is GREAT (${Math.round(tempF)}°F and bright)! Expect lots of neighbors out walking.`
-        };
-      }
-      return {
-        weatherId: 'cloudy',
-        emoji: '⛅',
-        label: `⛅ Mild & Cloudy (${Math.round(tempF)}°F)`,
-        quality: 'okay',
-        summary: `Today's weather is mild (${Math.round(tempF)}°F) — steady neighborhood traffic!`
-      };
-    }
-
-    // ========================================================================
-    // PRODUCT + SEASON FIT & ALTERNATIVE PRODUCT SUGGESTER
-    // ========================================================================
-    function evaluateProductSeasonFit(products, liveWeather) {
-      const tempF = liveWeather?.tempF ?? 68;
-      const weatherId = liveWeather?.weatherId ?? 'sunny';
-      const isCold = tempF < 55;
-      const isHot = tempF >= 75;
-      const isRainy = weatherId === 'rainy';
-
-      const coldTreatKeywords = ['snow', 'cone', 'ice', 'popsicle', 'lemonade', 'slush', 'iced', 'smoothie', 'milkshake'];
-      const hotTreatKeywords = ['cocoa', 'hot', 'cider', 'coffee', 'tea', 'soup', 'chili', 'oatmeal'];
-
-      const names = products.map((p) => p.name.toLowerCase());
-      const hasColdTreat = names.some((n) => coldTreatKeywords.some((kw) => n.includes(kw)));
-      const hasHotTreat = names.some((n) => hotTreatKeywords.some((kw) => n.includes(kw)));
-
-      if (hasColdTreat && isCold) {
-        return {
-          status: 'mismatch',
-          badge: '❄️ Off-Season Item Alert',
-          headline: `Hold on! It's ${Math.round(tempF)}°F outside — cold/frozen treats aren't a good fit today.`,
-          advice: `Instead of selling cold treats in chilly weather, switch to warm or indoor favorites that customers actually crave right now!`,
-          priceModifier: -0.25,
-          alternatives: [
-            { name: 'Hot Cocoa Cup', price: 2.5, cost: 0.45, reason: 'Best seller on chilly days!' },
-            { name: 'Warm Chocolate Chip Cookie', price: 2.0, cost: 0.4, reason: 'Pairs great with warm drinks!' },
-            { name: 'Friendship Bracelet', price: 3.0, cost: 0.5, reason: 'All-weather craft favorite!' }
-          ]
-        };
-      }
-
-      if (hasHotTreat && isHot) {
-        return {
-          status: 'mismatch',
-          badge: '☀️ Too Hot for Warm Drinks',
-          headline: `It's ${Math.round(tempF)}°F and warm — hot drinks won't sell well today!`,
-          advice: `Swap hot drinks for icy, refreshing treats where you can charge a higher summer margin!`,
-          priceModifier: -0.25,
-          alternatives: [
-            { name: 'Fresh Ice-Cold Lemonade', price: 2.5, cost: 0.4, reason: 'Top summer profit maker!' },
-            { name: 'Rainbow Snow Cone', price: 3.0, cost: 0.35, reason: 'High margin in hot weather!' },
-            { name: 'Fruit Popsicle', price: 2.0, cost: 0.45, reason: 'Fast grab-and-go refresher!' }
-          ]
-        };
-      }
-
-      if (isRainy && products.length > 0) {
-        return {
-          status: 'mismatch',
-          badge: '🌧️ Rainy Day Shift',
-          headline: `It's rainy right now — outdoor sidewalk drinks have slower foot traffic.`,
-          advice: `Offer indoor-friendly treats or take-home crafts that families love on rainy days!`,
-          priceModifier: 0,
-          alternatives: [
-            { name: 'Mystery Slime Jar', price: 3.5, cost: 0.65, reason: 'Kids love indoor slime on rainy days!' },
-            { name: 'Fudge Brownie Square', price: 2.5, cost: 0.5, reason: 'Cozy rainy-day comfort treat!' },
-            { name: 'Custom Sticker Pack', price: 2.0, cost: 0.3, reason: 'Easy to sell indoors or at school!' }
-          ]
-        };
-      }
-
-      if (hasColdTreat && isHot) {
-        return {
-          status: 'peak',
-          badge: '🔥 Peak Summer Demand!',
-          headline: `It's ${Math.round(tempF)}°F — peak weather for your cold treats!`,
-          advice: `High heat boosts demand elasticity, so raising your price slightly (+$0.25 to +$0.50) maximizes total profit!`,
-          priceModifier: 0.5,
-          alternatives: []
-        };
-      }
-
-      if (hasHotTreat && isCold) {
-        return {
-          status: 'peak',
-          badge: '🔥 Peak Cozy Weather!',
-          headline: `It's ${Math.round(tempF)}°F — ideal weather for your warm treats!`,
-          advice: `Chilly weather drives strong demand for warm drinks, allowing a small price increase (+$0.25 to +$0.50) for higher profit!`,
-          priceModifier: 0.5,
-          alternatives: []
-        };
-      }
-
-      return {
-        status: 'good',
-        badge: '✅ Good Product-Weather Fit',
-        headline: `Your menu fits today's ${Math.round(tempF)}°F weather well!`,
-        advice: `Pricing near the elasticity sweet spot balances customer volume and profit margin.`,
-        priceModifier: 0,
-        alternatives: []
-      };
-    }
-
-    // ========================================================================
+    // ============================================================================
     // PIXEL ART LOGO & ANIMATED MASCOT SPRITES
-    // ========================================================================
+    // ============================================================================
     function PixelLogo({ size = 40 }) {
       return (
         <svg width={size} height={size} viewBox="0 0 16 16" shapeRendering="crispEdges" className="shrink-0">
@@ -689,9 +736,9 @@
       );
     }
 
-    // ========================================================================
-    // WEB AUDIO SOUND EFFECTS
-    // ========================================================================
+    // ============================================================================
+    // WEB AUDIO API SOUND EFFECTS
+    // ============================================================================
     function playScannerBeep(muted) {
       if (muted || typeof window === 'undefined') return;
       try {
@@ -732,9 +779,9 @@
       } catch (e) {}
     }
 
-    // ========================================================================
+    // ============================================================================
     // CLIENT-SIDE RANDOM FOREST REGRESSOR + PERSISTENCE BASELINE AUDIT
-    // ========================================================================
+    // ============================================================================
     function trainAndEvaluatePennyML() {
       let seed = 42;
       const rand = () => {
@@ -780,8 +827,10 @@
         const threshold = vals[Math.floor(vals.length / 2)];
         const left = boot.filter((r) => r.features[featIdx] <= threshold);
         const right = boot.filter((r) => r.features[featIdx] > threshold);
-        const leftMean = left.length > 0 ? left.reduce((s, r) => s + r.target, 0) / left.length : 12;
-        const rightMean = right.length > 0 ? right.reduce((s, r) => s + r.target, 0) / right.length : 12;
+        const leftMean =
+          left.length > 0 ? left.reduce((s, r) => s + r.target, 0) / left.length : 12;
+        const rightMean =
+          right.length > 0 ? right.reduce((s, r) => s + r.target, 0) / right.length : 12;
         trees.push({ featIdx, threshold, leftMean, rightMean });
       }
 
@@ -820,9 +869,9 @@
       };
     }
 
-    // ========================================================================
-    // ONBOARDING WIZARD (6 VALIDATED STEPS, INCLUDES TOWN/CITY QUESTION)
-    // ========================================================================
+    // ============================================================================
+    // ONBOARDING WIZARD (INCLUDES TOWN/CITY QUESTION FOR LIVE WEATHER)
+    // ============================================================================
     function OnboardingWizard({
       step,
       setStep,
@@ -830,8 +879,8 @@
       setKidName,
       kidAgeGroup,
       setKidAgeGroup,
-      shopCity,
-      setShopCity,
+      cityLocation,
+      setCityLocation,
       parentKnows,
       setParentKnows,
       contactMethod,
@@ -871,7 +920,7 @@
             setStepError('Please enter your founder name(s) and business name!');
             return;
           }
-          if (containsProfanity(kidName) || containsProfanity(businessName) || containsProfanity(shopCity)) {
+          if (containsProfanity(kidName) || containsProfanity(businessName)) {
             setStepError('Please use friendly, school-safe names!');
             return;
           }
@@ -969,11 +1018,11 @@
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-extrabold mb-1">Town / City (for Live Weather)</label>
+                    <label className="block text-xs font-extrabold mb-1">Town / City (Live Weather)</label>
                     <input
                       type="text"
-                      value={shopCity}
-                      onChange={(e) => setShopCity(censorKidSafeText(e.target.value))}
+                      value={cityLocation}
+                      onChange={(e) => setCityLocation(censorKidSafeText(e.target.value))}
                       placeholder="Edison, NJ"
                       className={`w-full px-4 py-3 rounded-2xl border-2 text-sm font-bold ${theme.inputBg}`}
                     />
@@ -1059,7 +1108,7 @@
                       type="button"
                       onClick={() => setMascotId(m.id)}
                       className={`p-3.5 rounded-2xl border-2 flex flex-col items-center text-center gap-1.5 cursor-pointer ${
-                        mascotId === m.id ? theme.primaryBtn : theme.innerCream
+                        mascotId === m.id ? `${theme.primaryBtn}` : theme.innerCream
                       }`}
                     >
                       <PixelMascot type={m.id} size={48} />
@@ -1183,13 +1232,13 @@
                 <h2 className="text-2xl font-black">🚀 Quick 3-Step Shop Tour</h2>
                 <div className="space-y-2.5 text-xs sm:text-sm">
                   <div className={`p-3.5 rounded-2xl border ${theme.innerCream}`}>
-                    <strong>1. Add Your Products:</strong> Type any item name and price (or ask your AI Coach to add it!)—AI draws a cute cartoon sticker automatically!
+                    <strong>1. Add Your Products:</strong> Type any item name and price (or ask your AI Coach!)—a cute cartoon sticker is drawn automatically!
                   </div>
                   <div className={`p-3.5 rounded-2xl border ${theme.innerCream}`}>
                     <strong>2. Scan & Sell:</strong> Tap items or type barcodes on the Cash Register, add tips, and unlock the Bundle Master badge!
                   </div>
                   <div className={`p-3.5 rounded-2xl border ${theme.innerCream}`}>
-                    <strong>3. Close Shop & Split Jars:</strong> Wrap up each day with your AI Coach and split profits into Goal, Supplies, and Charity jars!
+                    <strong>3. Live Weather & ML Coach:</strong> Your AI Coach checks live weather in <strong>{cityLocation || 'Edison, NJ'}</strong>, evaluates seasonal product fit, and forecasts tomorrow's sales!
                   </div>
                 </div>
               </div>
@@ -1226,9 +1275,9 @@
       );
     }
 
-    // ========================================================================
+    // ============================================================================
     // ANIMATED FLOATING CORNER MASCOT COMPANION
-    // ========================================================================
+    // ============================================================================
     function FloatingMascotCompanion({
       theme,
       mascot,
@@ -1257,7 +1306,7 @@
               <div className="max-h-44 overflow-y-auto space-y-2 text-xs">
                 {chatMessages.length === 0 ? (
                   <div className={`p-2.5 rounded-2xl border ${theme.innerCream}`}>
-                    Hi {kidName}! Chat with me or say "add lemonade for $2" to add an item!
+                    Hi {kidName}! Ask me anything or say "add cookies to my inventory"!
                   </div>
                 ) : (
                   chatMessages.slice(-4).map((m) => (
@@ -1285,7 +1334,7 @@
                   type="text"
                   value={miniInput}
                   onChange={(e) => setMiniInput(e.target.value)}
-                  placeholder="Chat or add an item..."
+                  placeholder="Chat with your coach..."
                   className={`flex-1 px-3 py-2 rounded-full border text-xs font-bold outline-none ${theme.inputBg}`}
                 />
                 <button
@@ -1314,9 +1363,9 @@
       );
     }
 
-    // ========================================================================
+    // ============================================================================
     // MAIN APPLICATION COMPONENT
-    // ========================================================================
+    // ============================================================================
     function App() {
       const saved = useMemo(() => {
         try {
@@ -1340,7 +1389,7 @@
       // Founder & Account Security State
       const [kidName, setKidName] = useState(saved?.kidName ?? '');
       const [kidAgeGroup, setKidAgeGroup] = useState(saved?.kidAgeGroup ?? '8-9');
-      const [shopCity, setShopCity] = useState(saved?.shopCity ?? 'Edison, NJ');
+      const [cityLocation, setCityLocation] = useState(saved?.cityLocation ?? 'Edison, NJ');
       const [parentKnows, setParentKnows] = useState(saved?.parentKnows ?? null);
       const [contactMethod, setContactMethod] = useState(saved?.contactMethod ?? 'email');
       const [parentContact, setParentContact] = useState(saved?.parentContact ?? '');
@@ -1355,7 +1404,7 @@
       const [tycoonGems, setTycoonGems] = useState(saved?.tycoonGems ?? 0);
       const [streakDays] = useState(saved?.streakDays ?? 1);
 
-      // Saved Shops List
+      // Saved Shops List (Multi-Shop Support)
       const [shopsList, setShopsList] = useState(saved?.shopsList ?? []);
       const [activeShopId, setActiveShopId] = useState(saved?.activeShopId ?? 'shop-1');
 
@@ -1379,92 +1428,58 @@
       // Train ML Model Once
       const mlEngine = useMemo(() => trainAndEvaluatePennyML(), []);
 
-      // Live External Weather State (Default Edison, NJ)
-      const [liveWeather, setLiveWeather] = useState({
-        city: shopCity || 'Edison, NJ',
-        tempF: 68,
-        weatherId: 'sunny',
-        emoji: '☀️',
-        label: '☀️ Sunny & Mild (68°F)',
-        quality: 'good',
-        summary: 'Checking live weather for Edison, NJ...'
-      });
-      const [forecastDow, setForecastDow] = useState(saved?.forecastDow ?? 'sat');
-
-      // Interactive AI Chatbot Conversation History & Pending Product State
+      // AI Chatbot State & Pending Product-Add Price Prompt State
       const [chatMessages, setChatMessages] = useState([]);
       const [isAiTyping, setIsAiTyping] = useState(false);
-      const [pendingProductToAdd, setPendingProductToAdd] = useState(null);
       const [aiEngineStatus, setAiEngineStatus] = useState('AI Ready');
+      const [pendingProductToAdd, setPendingProductToAdd] = useState(null);
+
+      // Live External Weather State (Automatically fetched via Open-Meteo)
+      const [liveWeatherReport, setLiveWeatherReport] = useState({
+        locationLabel: 'Edison, NJ',
+        todayTemp: 54,
+        todayCondition: 'cloudy',
+        todayVerdict: 'Checking live weather in Edison, NJ...',
+        isGoodToday: false,
+        isBadToday: false,
+        tomorrowTemp: 56,
+        tomorrowCondition: 'cloudy'
+      });
+
+      const [forecastWeather, setForecastWeather] = useState(saved?.forecastWeather ?? 'cloudy');
+      const [forecastDow, setForecastDow] = useState(saved?.forecastDow ?? 'sat');
 
       // Cash Register Tips, Bundle Badge & Confetti State
       const [tipAmount, setTipAmount] = useState(0);
       const [earnedBadges, setEarnedBadges] = useState(saved?.earnedBadges ?? []);
       const [showConfetti, setShowConfetti] = useState(false);
 
-      // Close Shop End-of-Day Shift Wrap-Up Modal
+      // Close Shop End-of-Day Shift Wrap-Up & 3-Jar Profit Splitter Modal
       const [showShiftWrapUp, setShowShiftWrapUp] = useState(false);
       const [jarAllocations, setJarAllocations] = useState(
         saved?.jarAllocations ?? { goal: 70, supplies: 20, charity: 10 }
       );
 
-      // Fetch Real External Weather from Open-Meteo API
+      // Fetch real external weather automatically on load and whenever cityLocation changes
       useEffect(() => {
         let cancelled = false;
-        async function fetchExternalWeather() {
-          const targetCity = (shopCity || 'Edison, NJ').trim();
-          let lat = 40.5187;
-          let lon = -74.4121;
-          let resolvedName = targetCity || 'Edison, NJ';
-
-          try {
-            if (targetCity && targetCity.toLowerCase() !== 'edison, nj') {
-              const geoRes = await fetch(
-                `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
-                  targetCity.split(',')[0]
-                )}&count=1&language=en&format=json`
-              );
-              if (geoRes.ok) {
-                const geoData = await geoRes.json();
-                if (geoData?.results?.[0]) {
-                  lat = geoData.results[0].latitude;
-                  lon = geoData.results[0].longitude;
-                  resolvedName = `${geoData.results[0].name}${
-                    geoData.results[0].admin1 ? `, ${geoData.results[0].admin1}` : ''
-                  }`;
-                }
-              }
-            }
-
-            const wRes = await fetch(
-              `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&temperature_unit=fahrenheit`
-            );
-            if (wRes.ok && !cancelled) {
-              const wData = await wRes.json();
-              const tempF = wData?.current?.temperature_2m ?? 68;
-              const code = wData?.current?.weather_code ?? 1;
-              const decoded = decodeOpenMeteoWeather(code, tempF);
-              setLiveWeather({
-                city: resolvedName,
-                tempF,
-                ...decoded
-              });
-            }
-          } catch (err) {
-            if (!cancelled) {
-              setLiveWeather((prev) => ({
-                ...prev,
-                city: resolvedName,
-                summary: `Live weather in ${resolvedName}: ${prev.label}`
-              }));
-            }
-          }
-        }
-        fetchExternalWeather();
+        fetchExternalWeatherForecast(cityLocation || 'Edison, NJ')
+          .then((report) => {
+            if (cancelled) return;
+            setLiveWeatherReport(report);
+            setForecastWeather(report.tomorrowCondition);
+          })
+          .catch(() => {
+            if (cancelled) return;
+            setLiveWeatherReport((prev) => ({
+              ...prev,
+              todayVerdict: `Live forecast active for ${cityLocation || 'Edison, NJ'}`
+            }));
+          });
         return () => {
           cancelled = true;
         };
-      }, [shopCity]);
+      }, [cityLocation]);
 
       // Persist ALL app state to localStorage automatically
       useEffect(() => {
@@ -1495,7 +1510,7 @@
             shopOpen,
             kidName,
             kidAgeGroup,
-            shopCity,
+            cityLocation,
             parentKnows,
             contactMethod,
             parentContact,
@@ -1515,6 +1530,7 @@
             products,
             activeDay,
             salesLog,
+            forecastWeather,
             forecastDow,
             earnedBadges,
             jarAllocations
@@ -1532,7 +1548,7 @@
         shopOpen,
         kidName,
         kidAgeGroup,
-        shopCity,
+        cityLocation,
         parentKnows,
         contactMethod,
         parentContact,
@@ -1551,6 +1567,7 @@
         products,
         activeDay,
         salesLog,
+        forecastWeather,
         forecastDow,
         earnedBadges,
         jarAllocations
@@ -1657,7 +1674,7 @@
         } catch (e) {}
         setKidName('');
         setKidAgeGroup('8-9');
-        setShopCity('Edison, NJ');
+        setCityLocation('Edison, NJ');
         setParentKnows(null);
         setContactMethod('email');
         setParentContact('');
@@ -1689,6 +1706,7 @@
         setActiveTab('home');
       };
 
+      // Safe display fallbacks
       const displayKidName = censorKidSafeText(kidName.trim()) || 'Founder';
       const displayShopName = censorKidSafeText(businessName.trim()) || 'My Pop-Up Shop';
       const displayGoalItem = censorKidSafeText(goalItemName.trim()) || 'My Dream Goal';
@@ -1708,11 +1726,34 @@
         breakEvenPoint > 0 ? totalRevenueEarned >= breakEvenPoint : totalRevenueEarned > 0;
       const hasReachedGoal = totalTargetRevenue > 0 && totalRevenueEarned >= totalTargetRevenue;
 
-      // Real-Time Random Forest ML Inference + Item/Season Fit Engine
+      // Helper to add a product with an auto-generated cartoon picture
+      const addAiSuggestedProductToInventory = async (itemName, priceNum, costNum = 0.45) => {
+        const cleanName = censorKidSafeText(itemName.trim());
+        const stickerUrl = await generateCartoonProductImage(cleanName);
+        const formattedPrice = Number(Math.max(0.25, priceNum).toFixed(2));
+        setProducts((prev) => {
+          const nextBarcode = String(prev.length + 1).padStart(3, '0');
+          return [
+            {
+              id: `prod-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              barcode: nextBarcode,
+              name: cleanName,
+              price: formattedPrice,
+              unitCost: Number(costNum.toFixed(2)),
+              imageUrl: stickerUrl,
+              emoji: '🛍️'
+            },
+            ...prev
+          ];
+        });
+        return formattedPrice;
+      };
+
+      // Real-Time Random Forest ML Inference + Product-Season Fit Analysis
       const pennyAnalysis = useMemo(() => {
         const catIdx = Math.max(0, CATEGORIES.findIndex((c) => c.id === category));
         const catObj = CATEGORIES[catIdx];
-        const weatherIdx = liveWeather.weatherId === 'sunny' ? 0 : liveWeather.weatherId === 'rainy' ? 2 : 1;
+        const weatherIdx = Math.max(0, WEATHER_OPTIONS.findIndex((w) => w.id === forecastWeather));
         const dowIdx = Math.max(0, DAY_OF_WEEK_OPTIONS.findIndex((d) => d.id === forecastDow));
 
         const avgSellingPrice =
@@ -1723,8 +1764,6 @@
           products.length > 0
             ? products.reduce((sum, p) => sum + p.unitCost, 0) / products.length
             : catObj.avgUnitCost;
-
-        const seasonFit = evaluateProductSeasonFit(products, liveWeather);
 
         let bestPrice = avgSellingPrice;
         let maxPredictedProfit = -Infinity;
@@ -1763,10 +1802,16 @@
           .reduce((sum, tx) => sum + (tx.unitsCount || 1), 0);
         const persistencePredUnits = todayUnitsSold > 0 ? todayUnitsSold : 10;
 
+        const seasonFit = analyzeProductSeasonFit(
+          products,
+          liveWeatherReport.todayTemp,
+          liveWeatherReport.todayCondition
+        );
+
         const goalRatio = totalTargetRevenue > 0 ? currentPredTotalRevenue / totalTargetRevenue : 1.2;
         let verdict = 'High Potential!';
-        if (seasonFit.status === 'mismatch') {
-          verdict = 'Swap Item Advised';
+        if (seasonFit.status.startsWith('mismatch')) {
+          verdict = 'Seasonal Swap!';
         } else if (goalRatio >= 1.05) {
           verdict = 'High Potential!';
         } else if (goalRatio >= 0.72) {
@@ -1775,7 +1820,7 @@
           verdict = 'Tough Challenge';
         }
 
-        const weatherMult = [1.25, 1.0, 0.65][weatherIdx];
+        const weatherObj = WEATHER_OPTIONS[weatherIdx];
         const dowObj = DAY_OF_WEEK_OPTIONS[dowIdx];
 
         const logDaysCount = new Set(salesLog.map((tx) => tx.day)).size;
@@ -1783,41 +1828,38 @@
         const avgLoggedDailyUnits = logDaysCount > 0 ? totalLoggedUnits / logDaysCount : null;
         const adjustedLoggedUnits =
           avgLoggedDailyUnits !== null
-            ? avgLoggedDailyUnits * weatherMult * dowObj.demandMult
+            ? avgLoggedDailyUnits * weatherObj.demandMult * dowObj.demandMult
             : null;
 
-        const rawTomorrowUnits =
+        const tomorrowPredictedUnits =
           adjustedLoggedUnits !== null
             ? Math.max(1, Math.round(0.55 * currentPredDailyUnits + 0.45 * adjustedLoggedUnits))
             : Math.max(1, Math.round(currentPredDailyUnits));
 
-        const tomorrowPredictedUnits =
-          seasonFit.status === 'mismatch'
-            ? Math.max(1, Math.round(rawTomorrowUnits * 0.55))
-            : rawTomorrowUnits;
-
-        // Smart Pricing Recommendation combining elasticity + product-season fit
         let recommendedPrice = bestPrice;
-        if (seasonFit.status === 'peak') {
+        let priceAction = '';
+        if (seasonFit.priceDirection === 'avoid') {
+          recommendedPrice = avgSellingPrice;
+          priceAction = seasonFit.headline;
+        } else if (seasonFit.priceDirection === 'raise') {
           recommendedPrice = Number((avgSellingPrice + 0.5).toFixed(2));
-        } else if (seasonFit.status === 'mismatch') {
-          recommendedPrice = Math.max(1.0, Number((avgSellingPrice - 0.25).toFixed(2)));
+          priceAction = `Raise price by +$0.50 to $${recommendedPrice.toFixed(2)} (${seasonFit.itemName} fits ${liveWeatherReport.todayTemp}°F!)`;
+        } else if (seasonFit.priceDirection === 'lower') {
+          recommendedPrice = Math.max(0.5, Number((avgSellingPrice - 0.25).toFixed(2)));
+          priceAction = `Lower price by -$0.25 to $${recommendedPrice.toFixed(2)} for rainy weather`;
         } else {
           const priceDiff = Number((bestPrice - avgSellingPrice).toFixed(2));
           recommendedPrice =
             Math.abs(priceDiff) < 0.15
               ? avgSellingPrice
               : Number((avgSellingPrice + (priceDiff > 0 ? 0.25 : -0.25)).toFixed(2));
+          priceAction =
+            recommendedPrice > avgSellingPrice + 0.05
+              ? `Raise price by +$${(recommendedPrice - avgSellingPrice).toFixed(2)}`
+              : recommendedPrice < avgSellingPrice - 0.05
+              ? `Lower price by -$${(avgSellingPrice - recommendedPrice).toFixed(2)}`
+              : 'Keep current price';
         }
-
-        const priceAction =
-          seasonFit.status === 'mismatch'
-            ? 'Do NOT sell this item right now — swap to a seasonal item below!'
-            : recommendedPrice > avgSellingPrice + 0.05
-            ? `Raise price by +$${(recommendedPrice - avgSellingPrice).toFixed(2)} (to $${recommendedPrice.toFixed(2)})`
-            : recommendedPrice < avgSellingPrice - 0.05
-            ? `Lower price by -$${(avgSellingPrice - recommendedPrice).toFixed(2)} (to $${recommendedPrice.toFixed(2)})`
-            : `Keep price at $${avgSellingPrice.toFixed(2)}`;
 
         const currentDailyProfit = currentPredDailyUnits * (avgSellingPrice - avgUnitCost);
         const recPredUnits = mlEngine.predictDemand(
@@ -1833,24 +1875,32 @@
 
         const explainabilityFactors = [
           {
-            label: `Live Weather in ${liveWeather.city} (${liveWeather.label})`,
-            impact: weatherIdx === 0 ? '+25% boost' : weatherIdx === 2 ? '-35% drop' : 'Baseline (0%)',
+            label: `Live Weather (${liveWeatherReport.locationLabel}: ${liveWeatherReport.todayTemp}°F)`,
+            impact: liveWeatherReport.isGoodToday
+              ? 'Good weather (+25%)'
+              : liveWeatherReport.isBadToday
+              ? 'Bad/cold weather (-35%)'
+              : 'Mild weather (0%)',
             weightPct: 42
           },
           {
-            label: `Product-Season Fit (${seasonFit.badge})`,
-            impact: seasonFit.status === 'mismatch' ? '-45% seasonal penalty' : seasonFit.status === 'peak' ? '+20% peak bonus' : 'Aligned',
+            label: `Product & Season Fit (${seasonFit.itemName})`,
+            impact: seasonFit.status.startsWith('mismatch')
+              ? 'Seasonal mismatch'
+              : seasonFit.status === 'peak_match'
+              ? 'Peak seasonal fit'
+              : 'All-season fit',
             weightPct: 33
           },
           {
             label:
               avgLoggedDailyUnits !== null
                 ? `Past Sales Logs (${totalLoggedUnits} units across ${logDaysCount}d)`
-                : `Day Trend (${dowObj.label})`,
+                : 'Category Elasticity Curve',
             impact:
               avgLoggedDailyUnits !== null
                 ? `${avgLoggedDailyUnits.toFixed(1)} avg/day`
-                : `${dowObj.demandMult}x multiplier`,
+                : `$${avgSellingPrice.toFixed(2)} unit price`,
             weightPct: 25
           }
         ];
@@ -1879,8 +1929,17 @@
           }
         ];
 
+        const tips = [
+          seasonFit.status.startsWith('mismatch')
+            ? `Seasonal Tip: ${seasonFit.headline} Try ${seasonFit.suggestedItems[0]?.name || 'a cozy treat'} instead!`
+            : `Bundle Boost: Keep it up, ${displayKidName}! Selling 2+ items together unlocks the Bundle Master badge!`,
+          `Live Weather (${liveWeatherReport.locationLabel}): ${liveWeatherReport.todayVerdict}`,
+          `Goal Sign Trick: Write "Saving $${financialGoal} for ${displayGoalItem}!" on a bright sign!`
+        ];
+
         return {
           catObj,
+          weatherObj,
           dowObj,
           seasonFit,
           avgSellingPrice,
@@ -1894,10 +1953,12 @@
           tomorrowPredictedUnits,
           logDaysCount,
           totalLoggedUnits,
+          currentPredTotalRevenue,
           persistencePredUnits,
           explainabilityFactors,
           failureCases,
-          verdict
+          verdict,
+          tips
         };
       }, [
         category,
@@ -1905,46 +1966,29 @@
         materialCost,
         products,
         totalTargetRevenue,
+        displayKidName,
+        financialGoal,
+        displayGoalItem,
         mlEngine,
-        liveWeather,
+        forecastWeather,
         forecastDow,
         salesLog,
-        activeDay
+        activeDay,
+        liveWeatherReport
       ]);
 
       const activeMascot = MASCOTS.find((m) => m.id === mascotId) || MASCOTS[0];
       const theme = THEMES[themeId] || THEMES.mint;
 
-      // Helper to add a product directly to inventory with generated cartoon sticker
-      const addProductToInventory = async (rawName, priceVal, costVal = 0.4) => {
-        const cleanName = censorKidSafeText(rawName.trim());
-        const cartoonUrl = await generateCartoonProductImage(cleanName);
-        setProducts((prev) => {
-          const nextBarcode = String(prev.length + 1).padStart(3, '0');
-          return [
-            {
-              id: `prod-${Date.now()}-${Math.random()}`,
-              barcode: nextBarcode,
-              name: cleanName,
-              price: Number(Number(priceVal).toFixed(2)),
-              unitCost: Number(Number(costVal).toFixed(2)),
-              imageUrl: cartoonUrl,
-              emoji: '🛍️'
-            },
-            ...prev
-          ];
-        });
+      // Age-adapted helper for phrasing natural responses
+      const formatByAge = (age, variants) => {
+        if (age === '6-7') return variants.young;
+        if (age === '8-9') return variants.kid;
+        if (age === '10-12') return variants.tween;
+        return variants.teen;
       };
 
-      // Age-adapted natural voice helper
-      const formatByAge = (simple6to7, friendly8to9, smart10to12, founder13Plus) => {
-        if (kidAgeGroup === '6-7') return simple6to7;
-        if (kidAgeGroup === '10-12') return smart10to12;
-        if (kidAgeGroup === '13+') return founder13Plus;
-        return friendly8to9;
-      };
-
-      // Natural Conversational AI Assistant + Product Add Workflow
+      // Natural Age-Adapted AI Chatbot with Ollama Cloud (CORS Proxy Relay) + Product Add Flow
       const handleSendChat = async (textToSend) => {
         const cleanText = (textToSend || '').trim();
         if (!cleanText) return;
@@ -1960,102 +2004,99 @@
             {
               id: `ai-${Date.now()}-${Math.random()}`,
               role: 'ai',
-              text: `Whoa there, ${displayKidName}! Let's keep our shop super friendly and positive. Ask me anything about your shop!`
+              text: `Whoa there, ${displayKidName}! Let's keep our shop super friendly and positive. Ask me about cool bundles, signs, or prices!`
             }
           ]);
           return;
         }
 
-        // Check if user is answering our price question for a pending product
+        // 1. Check if the user is answering the price for a pending product add!
         if (pendingProductToAdd) {
           const priceMatch = censoredUserText.match(/\$?\s*(\d+(?:\.\d{1,2})?)/);
           if (priceMatch) {
-            const parsedPrice = Math.max(0.25, parseFloat(priceMatch[1]));
-            const itemName = pendingProductToAdd;
+            const parsedPrice = parseFloat(priceMatch[1]);
+            const itemToCreate = pendingProductToAdd;
             setPendingProductToAdd(null);
             setIsAiTyping(true);
-            await addProductToInventory(itemName, parsedPrice);
+            const finalPrice = await addAiSuggestedProductToInventory(itemToCreate, parsedPrice);
+            const addedReply = formatByAge(kidAgeGroup, {
+              young: `Yay! I drew a cute cartoon picture of ${itemToCreate} and put it in your shop for $${finalPrice.toFixed(2)}! 🎉`,
+              kid: `Awesome! I generated a cartoon picture for ${itemToCreate} and added it to your inventory for $${finalPrice.toFixed(2)}! 🎨`,
+              tween: `Done! I created a custom cartoon sticker for ${itemToCreate} and added it to your menu at $${finalPrice.toFixed(2)}.`,
+              teen: `Added ${itemToCreate} to your inventory at $${finalPrice.toFixed(2)} with a generated product graphic.`
+            });
+            setChatMessages((prev) => [
+              ...prev,
+              { id: `ai-${Date.now()}-${Math.random()}`, role: 'ai', text: addedReply }
+            ]);
             setIsAiTyping(false);
-
-            const confirmReply = formatByAge(
-              `Yay! I drew a cute cartoon picture of ${itemName} and put it in your shop for $${parsedPrice.toFixed(2)}!`,
-              `Awesome! I generated a custom cartoon sticker for ${itemName} and added it to your inventory for $${parsedPrice.toFixed(2)}!`,
-              `Done! I added ${itemName} to your inventory at $${parsedPrice.toFixed(2)} with a custom cartoon sticker ready for your Cash Register.`,
-              `Added ${itemName} ($${parsedPrice.toFixed(2)}) to your SKU inventory with an auto-generated cartoon asset.`
-            );
-            setChatMessages((prev) => [
-              ...prev,
-              { id: `ai-${Date.now()}-${Math.random()}`, role: 'ai', text: confirmReply }
-            ]);
-            return;
-          } else if (censoredUserText.toLowerCase().includes('cancel')) {
-            setPendingProductToAdd(null);
-            setChatMessages((prev) => [
-              ...prev,
-              {
-                id: `ai-${Date.now()}-${Math.random()}`,
-                role: 'ai',
-                text: `No problem! I canceled adding ${pendingProductToAdd}. What else would you like to chat about?`
-              }
-            ]);
             return;
           } else {
-            const askAgain = formatByAge(
-              `How many dollars should ${pendingProductToAdd} cost? (Like $2 or $3!)`,
-              `What price should we set for ${pendingProductToAdd}? Tell me a dollar amount like $2.50!`,
-              `Please enter a selling price for ${pendingProductToAdd} (for example, $2.50) so I can add it to your menu.`,
-              `Specify a unit retail price for ${pendingProductToAdd} (e.g., $2.50) to finalize the inventory entry.`
-            );
+            const askAgainReply = formatByAge(kidAgeGroup, {
+              young: `Oops! Tell me a number for the price of ${pendingProductToAdd}, like $2 or $3!`,
+              kid: `What price should I put on ${pendingProductToAdd}? Just type a number like $2.50!`,
+              tween: `Please give me a dollar amount for ${pendingProductToAdd} (for example, $2.50) so I can add it to your menu!`,
+              teen: `Specify a unit price (e.g., $2.50) for ${pendingProductToAdd} to finalize the inventory entry.`
+            });
             setChatMessages((prev) => [
               ...prev,
-              { id: `ai-${Date.now()}-${Math.random()}`, role: 'ai', text: askAgain }
+              { id: `ai-${Date.now()}-${Math.random()}`, role: 'ai', text: askAgainReply }
             ]);
             return;
           }
         }
 
-        // Detect intent to add a product to inventory (e.g., "add hot cocoa to inventory" or "add cookies for $2")
+        // 2. Check if user is asking the AI to add a new product to their inventory
         const addIntentMatch = censoredUserText.match(
-          /^(?:please\s+)?(?:add|put|create|list)\s+(?:a\s+|an\s+|some\s+)?(.+?)(?:\s+(?:to|in|into|on)\s+(?:my\s+)?(?:inventory|menu|shop|store|register))?$/i
+          /(?:add|put|create|list)\s+(?:a\s+|an\s+|some\s+)?(.+?)(?:\s+(?:to|in|into|on)\s+(?:my\s+|the\s+)?(?:inventory|menu|shop|store|register))?(?:\s+(?:for|at)\s+\$?\s*(\d+(?:\.\d{1,2})?))?$/i
         );
-        if (addIntentMatch) {
-          let extractedPhrase = addIntentMatch[1].trim();
-          const inlinePriceMatch = extractedPhrase.match(/(?:for|at|price)\s*\$?\s*(\d+(?:\.\d{1,2})?)/i);
-          const cleanedItemName = extractedPhrase
-            .replace(/(?:for|at|price)\s*\$?\s*\d+(?:\.\d{1,2})?/i, '')
-            .replace(/\s+(?:to|in|into|on)\s+(?:my\s+)?(?:inventory|menu|shop|store|register).*$/i, '')
+        const explicitInventoryMention = /(?:inventory|menu|shop|store|register)/i.test(censoredUserText);
+        const explicitAddVerb = /^(?:please\s+)?(?:add|put|create|list)\b/i.test(censoredUserText);
+
+        if (addIntentMatch && (explicitInventoryMention || explicitAddVerb)) {
+          let rawItem = (addIntentMatch[1] || '')
+            .replace(/\s+(?:to|in|into|on)\s+(?:my\s+|the\s+)?(?:inventory|menu|shop|store|register).*$/i, '')
             .trim();
+          const inlinePriceMatch = rawItem.match(/(.+?)\s+(?:for|at)\s+\$?\s*(\d+(?:\.\d{1,2})?)$/i);
+          let inlinePrice = addIntentMatch[2] ? parseFloat(addIntentMatch[2]) : null;
+          if (inlinePriceMatch) {
+            rawItem = inlinePriceMatch[1].trim();
+            inlinePrice = parseFloat(inlinePriceMatch[2]);
+          }
 
-          if (cleanedItemName && cleanedItemName.length >= 2) {
-            if (inlinePriceMatch) {
-              const priceNum = Math.max(0.25, parseFloat(inlinePriceMatch[1]));
+          if (rawItem && rawItem.length >= 2) {
+            const cleanItemTitle = rawItem
+              .split(/\s+/)
+              .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+              .join(' ');
+
+            if (inlinePrice && !isNaN(inlinePrice) && inlinePrice > 0) {
               setIsAiTyping(true);
-              await addProductToInventory(cleanedItemName, priceNum);
-              setIsAiTyping(false);
-
-              const addedMsg = formatByAge(
-                `Yay! I drew a cartoon picture of ${cleanedItemName} and added it to your shop for $${priceNum.toFixed(2)}!`,
-                `You got it! I made a cartoon picture for ${cleanedItemName} and added it to your inventory at $${priceNum.toFixed(2)}!`,
-                `Added! ${cleanedItemName} is now in your inventory at $${priceNum.toFixed(2)} with a custom cartoon sticker.`,
-                `SKU created: ${cleanedItemName} at $${priceNum.toFixed(2)}, complete with a custom cartoon asset in your inventory.`
-              );
+              const finalPrice = await addAiSuggestedProductToInventory(cleanItemTitle, inlinePrice);
+              const addedReply = formatByAge(kidAgeGroup, {
+                young: `Yay! I drew a cute cartoon picture of ${cleanItemTitle} and added it to your inventory for $${finalPrice.toFixed(2)}! 🎉`,
+                kid: `Done! I generated a cartoon picture for ${cleanItemTitle} and added it to your inventory for $${finalPrice.toFixed(2)}! 🎨`,
+                tween: `Added ${cleanItemTitle} to your inventory for $${finalPrice.toFixed(2)} with a custom cartoon sticker!`,
+                teen: `${cleanItemTitle} has been added to your inventory at $${finalPrice.toFixed(2)} along with a generated cartoon graphic.`
+              });
               setChatMessages((prev) => [
                 ...prev,
-                { id: `ai-${Date.now()}-${Math.random()}`, role: 'ai', text: addedMsg }
+                { id: `ai-${Date.now()}-${Math.random()}`, role: 'ai', text: addedReply }
               ]);
+              setIsAiTyping(false);
               return;
             } else {
-              // ALWAYS ask for price if not specified!
-              setPendingProductToAdd(cleanedItemName);
-              const askPriceMsg = formatByAge(
-                `Ooh, ${cleanedItemName} sounds awesome! How much money should 1 ${cleanedItemName} cost?`,
-                `Great idea! Before I draw the cartoon picture and add ${cleanedItemName} to your inventory, what price do you want to charge?`,
-                `I'd love to add ${cleanedItemName} to your menu! What selling price (like $2.50) should we set for it?`,
-                `Before generating the cartoon asset and adding ${cleanedItemName} to inventory, what unit retail price would you like to set?`
-              );
+              // Always ask for the price first!
+              setPendingProductToAdd(cleanItemTitle);
+              const askPriceReply = formatByAge(kidAgeGroup, {
+                young: `Ooh, ${cleanItemTitle} sounds super fun! How much money should each ${cleanItemTitle} cost?`,
+                kid: `Awesome idea! How much do you want to charge for ${cleanItemTitle}? Once you tell me the price, I'll draw its cartoon sticker and add it!`,
+                tween: `Great choice! What price would you like to set for ${cleanItemTitle}? Tell me the price and I'll generate its cartoon image and add it to your inventory.`,
+                teen: `Sure—what unit price should I list ${cleanItemTitle} for? Let me know and I'll generate its cartoon graphic and add it to your inventory.`
+              });
               setChatMessages((prev) => [
                 ...prev,
-                { id: `ai-${Date.now()}-${Math.random()}`, role: 'ai', text: askPriceMsg }
+                { id: `ai-${Date.now()}-${Math.random()}`, role: 'ai', text: askPriceReply }
               ]);
               return;
             }
@@ -2066,159 +2107,124 @@
 
         const ageToneInstruction =
           kidAgeGroup === '6-7'
-            ? 'Speak to a 6-7 year old: use very simple, short, playful sentences and enthusiastic easy words.'
+            ? 'Speak to a 6-7 year old: use super simple, playful, short sentences and easy words.'
+            : kidAgeGroup === '8-9'
+            ? 'Speak to an 8-9 year old: use friendly, upbeat everyday kid language with clear examples.'
             : kidAgeGroup === '10-12'
-            ? 'Speak to a 10-12 year old: smart, encouraging junior-CEO tone using clear business concepts like profit margin and bundles.'
-            : kidAgeGroup === '13+'
-            ? 'Speak to a 13+ teen founder: sharp, respectful founder language using real data-science and business terms like price elasticity, Mean Absolute Error, and unit economics.'
-            : 'Speak to an 8-9 year old: friendly, upbeat everyday kid vocabulary with clear, fun examples.';
+            ? 'Speak to a 10-12 year old: use an encouraging junior-CEO tone introducing real business terms naturally.'
+            : 'Speak to a 13+ teen founder: use sharp, practical startup and data-science language.';
 
         const systemPrompt = `You are ${activeMascot.shortName}, a natural, warm conversational AI Business Mentor inside Seedling.
 ${ageToneInstruction}
-IMPORTANT: Chat naturally like a real friendly mentor! Do NOT dump weather stats or numbers unless the user actually asks about weather, pricing, or sales predictions. Keep replies concise (2-3 sentences max) and 100% kid-safe.
-Context if needed:
-- User: ${displayKidName} (Age ${kidAgeGroup}) in ${liveWeather.city}
+Respond naturally like a real friendly mentor—have a normal conversation, answer what the user actually asked, and ONLY bring up weather, pricing, or ML forecasts when relevant or asked. Keep replies concise (2-3 sentences). Stay 100% G-rated.
+Context:
+- Founder: ${displayKidName} (Age ${kidAgeGroup}) in ${liveWeatherReport.locationLabel}
 - Shop: "${displayShopName}" saving $${financialGoal} for "${displayGoalItem}"
-- Live Weather in ${liveWeather.city}: ${liveWeather.label} (${liveWeather.quality} for outdoor selling).
-- Menu Items: ${products.map((p) => `${p.name} ($${p.price.toFixed(2)})`).join(', ') || 'None yet'}
-- Product-Season Fit: ${pennyAnalysis.seasonFit.headline} ${pennyAnalysis.seasonFit.alternatives.length ? 'Suggested swaps: ' + pennyAnalysis.seasonFit.alternatives.map((a) => a.name).join(', ') : ''}
-- Tomorrow's ML Prediction: ${pennyAnalysis.tomorrowPredictedUnits} units; Random Forest MAE ${mlEngine.rfMAE} vs Baseline MAE ${mlEngine.baseMAE}.`;
+- Live Weather in ${liveWeatherReport.locationLabel}: ${liveWeatherReport.todayVerdict}
+- Menu: ${products.map((p) => `${p.name} ($${p.price.toFixed(2)})`).join(', ') || 'Empty'}
+- Season Fit: ${pennyAnalysis.seasonFit.headline}
+- Tomorrow ML Forecast: ${pennyAnalysis.tomorrowPredictedUnits} units.`;
 
         let replyText = '';
 
-        // 1. Try Ollama Cloud (deepseek-v4.1-flash)
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
-          const res = await fetch(OLLAMA_API_URL, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${OLLAMA_API_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            signal: controller.signal,
-            body: JSON.stringify({
-              model: OLLAMA_MODEL_NAME,
-              messages: [
-                { role: 'system', content: systemPrompt },
-                ...chatMessages.slice(-4).map((m) => ({
-                  role: m.role === 'user' ? 'user' : 'assistant',
-                  content: censorKidSafeText(m.text)
-                })),
-                { role: 'user', content: censoredUserText }
-              ]
-            })
-          });
-          clearTimeout(timeoutId);
-          if (res.ok) {
-            const data = await res.json();
-            const ollamaContent = data?.choices?.[0]?.message?.content;
-            if (ollamaContent) {
-              replyText = censorKidSafeText(ollamaContent.trim());
-              setAiEngineStatus('AI Online');
-            }
-          }
-        } catch (err) {}
+        // 1. Try Ollama Cloud (deepseek-v4.1-flash) directly, with automatic CORS-proxy relay fallback for Vercel
+        const ollamaPayload = JSON.stringify({
+          model: OLLAMA_MODEL_NAME,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...chatMessages.slice(-4).map((m) => ({
+              role: m.role === 'user' ? 'user' : 'assistant',
+              content: censorKidSafeText(m.text)
+            })),
+            { role: 'user', content: censoredUserText }
+          ]
+        });
 
-        // 2. Fallback to Gemini Flash if Ollama Cloud is unreachable from browser CORS
-        if (!replyText) {
+        const ollamaEndpoints = [
+          OLLAMA_API_URL,
+          `https://corsproxy.io/?url=${encodeURIComponent(OLLAMA_API_URL)}`
+        ];
+
+        for (const endpoint of ollamaEndpoints) {
+          if (replyText) break;
           try {
-            const apiKey = '';
-            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
-            const res = await fetch(geminiUrl, {
+            const timeoutId = setTimeout(() => controller.abort(), 6000);
+            const res = await fetch(endpoint, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Authorization': `Bearer ${OLLAMA_API_KEY}`,
+                'Content-Type': 'application/json'
+              },
               signal: controller.signal,
-              body: JSON.stringify({
-                systemInstruction: { parts: [{ text: systemPrompt }] },
-                contents: [
-                  ...chatMessages.slice(-4).map((m) => ({
-                    role: m.role === 'user' ? 'user' : 'model',
-                    parts: [{ text: censorKidSafeText(m.text) }]
-                  })),
-                  { role: 'user', parts: [{ text: censoredUserText }] }
-                ]
-              })
+              body: ollamaPayload
             });
             clearTimeout(timeoutId);
             if (res.ok) {
               const data = await res.json();
-              const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (candidateText) {
-                replyText = censorKidSafeText(candidateText.trim());
+              const ollamaContent = data?.choices?.[0]?.message?.content;
+              if (ollamaContent) {
+                replyText = censorKidSafeText(ollamaContent.trim());
                 setAiEngineStatus('AI Online');
               }
             }
           } catch (err) {}
         }
 
-        // 3. Natural Conversational Fallback (adapts to topic & age group)
+        // 2. Natural Age-Adapted Conversational Fallback (if network/proxy is blocked)
         if (!replyText) {
+          setAiEngineStatus('AI Coach Ready');
           const lower = censoredUserText.toLowerCase();
-          if (lower.includes('weather') || lower.includes('outside') || lower.includes('rain') || lower.includes('cold') || lower.includes('hot')) {
+          if (lower.includes('weather') || lower.includes('outside') || lower.includes('today')) {
             const altText =
-              pennyAnalysis.seasonFit.alternatives.length > 0
-                ? ` Instead, you could try selling ${pennyAnalysis.seasonFit.alternatives
-                    .map((a) => a.name)
-                    .join(', ')}!`
+              pennyAnalysis.seasonFit.suggestedItems.length > 0
+                ? ` Instead, you could sell ${pennyAnalysis.seasonFit.suggestedItems.map((i) => i.name).join(', ')}!`
                 : '';
-            replyText = formatByAge(
-              `In ${liveWeather.city}, it is ${liveWeather.label} today! ${
-                liveWeather.quality === 'good' ? 'That is super good weather!' : 'It is a little chilly or rainy today.'
-              }${altText}`,
-              `Right now in ${liveWeather.city}, it's ${liveWeather.label}—${
-                liveWeather.quality === 'good' ? 'really good weather for your shop!' : 'a bit tough for outdoor drinks.'
-              }${altText}`,
-              `Live weather in ${liveWeather.city} is ${liveWeather.label}. ${pennyAnalysis.seasonFit.headline}${altText}`,
-              `Current conditions in ${liveWeather.city}: ${liveWeather.label}. ${pennyAnalysis.seasonFit.headline}${altText}`
-            );
-          } else if (lower.includes('price') || lower.includes('charge') || lower.includes('sell') || lower.includes('suggest')) {
-            if (pennyAnalysis.seasonFit.status === 'mismatch') {
-              const swaps = pennyAnalysis.seasonFit.alternatives.map((a) => a.name).join(', ');
-              replyText = formatByAge(
-                `Brrr! Since it's ${Math.round(liveWeather.tempF)}°F, don't sell cold treats today. Try selling ${swaps} instead!`,
-                `${pennyAnalysis.seasonFit.headline} Try selling ${swaps} instead so lots of people buy!`,
-                `${pennyAnalysis.seasonFit.headline} Based on seasonal demand, swap to ${swaps} rather than raising prices.`,
-                `${pennyAnalysis.seasonFit.headline} Elasticity drops sharply off-season—pivot your SKU mix to ${swaps}.`
-              );
-            } else {
-              replyText = formatByAge(
-                `Charging $${pennyAnalysis.recommendedPrice.toFixed(2)} is a super smart price today!`,
-                `${pennyAnalysis.seasonFit.headline} Try pricing around $${pennyAnalysis.recommendedPrice.toFixed(2)} to earn the most profit!`,
-                `${pennyAnalysis.priceAction}. ${pennyAnalysis.seasonFit.advice}`,
-                `Pricing recommendation: ${pennyAnalysis.priceAction}. ${pennyAnalysis.seasonFit.advice}`
-              );
-            }
-          } else if (lower.includes('predict') || lower.includes('tomorrow') || lower.includes('forecast') || lower.includes('mae')) {
-            replyText = formatByAge(
-              `I think you will sell about ${pennyAnalysis.tomorrowPredictedUnits} items tomorrow!`,
-              `Based on your past sales and ${liveWeather.city}'s weather, I predict about ${pennyAnalysis.tomorrowPredictedUnits} units sold tomorrow!`,
-              `Tomorrow's ML forecast is ${pennyAnalysis.tomorrowPredictedUnits} units (our Random Forest has a ${mlEngine.rfMAE} MAE vs ${mlEngine.baseMAE} for the simple baseline).`,
-              `Tomorrow's demand forecast: ${pennyAnalysis.tomorrowPredictedUnits} units. Random Forest MAE is ${mlEngine.rfMAE} units vs ${mlEngine.baseMAE} persistence baseline (-${mlEngine.maeImprovementPct}% error).`
-            );
-          } else if (lower.includes('hi') || lower.includes('hello') || lower.includes('hey') || lower.includes('how are')) {
-            replyText = formatByAge(
-              `Hi ${displayKidName}! Yay, I'm so happy to help with ${displayShopName}! What do you want to do today?`,
-              `Hey ${displayKidName}! How's ${displayShopName} going today? Ask me anything or tell me a new item to add!`,
-              `Hey ${displayKidName}! Good to see you running ${displayShopName}. What's on your mind—new products, pricing, or your savings goal?`,
-              `Hey ${displayKidName}! Ready to grow ${displayShopName}. Want to brainstorm new SKUs, check demand forecasts, or optimize margins?`
-            );
-          } else if (lower.includes('idea') || lower.includes('help') || lower.includes('sign') || lower.includes('bundle')) {
-            replyText = formatByAge(
-              `Make a bright colorful sign that says "Saving for ${displayGoalItem}!" Neighbors will love it!`,
-              `Try making a 2-item "Bestie Bundle" and a bright sign showing you're saving for ${displayGoalItem}!`,
-              `Bundling two complementary items together increases your average order value and unlocks the Bundle Master badge!`,
-              `Consider a multi-SKU bundle discount to lift average order value while maintaining unit margin toward your $${financialGoal} goal.`
-            );
+            replyText = formatByAge(kidAgeGroup, {
+              young: `I checked ${liveWeatherReport.locationLabel}! ${liveWeatherReport.todayVerdict}.${altText}`,
+              kid: `Here's the live weather in ${liveWeatherReport.locationLabel}: ${liveWeatherReport.todayVerdict}.${altText}`,
+              tween: `Live check for ${liveWeatherReport.locationLabel}: ${liveWeatherReport.todayVerdict}.${altText}`,
+              teen: `Live telemetry for ${liveWeatherReport.locationLabel}: ${liveWeatherReport.todayVerdict}.${altText}`
+            });
+          } else if (lower.includes('price') || lower.includes('cost') || lower.includes('charge') || lower.includes('sell')) {
+            const altIdeas =
+              pennyAnalysis.seasonFit.suggestedItems.length > 0
+                ? ` Better ideas for ${liveWeatherReport.todayTemp}°F: ${pennyAnalysis.seasonFit.suggestedItems.map((i) => `${i.name} ($${i.price.toFixed(2)})`).join(', ')}.`
+                : '';
+            replyText = formatByAge(kidAgeGroup, {
+              young: `${pennyAnalysis.seasonFit.headline}!${altIdeas}`,
+              kid: `${pennyAnalysis.priceAction}.${altIdeas}`,
+              tween: `Looking at your items and ${liveWeatherReport.todayTemp}°F weather: ${pennyAnalysis.priceAction}.${altIdeas}`,
+              teen: `Based on seasonal demand elasticity at ${liveWeatherReport.todayTemp}°F: ${pennyAnalysis.priceAction}.${altIdeas}`
+            });
+          } else if (lower.includes('predict') || lower.includes('tomorrow') || lower.includes('forecast')) {
+            replyText = formatByAge(kidAgeGroup, {
+              young: `I think you can sell about ${pennyAnalysis.tomorrowPredictedUnits} things tomorrow! Yay!`,
+              kid: `My crystal-ball math predicts about ${pennyAnalysis.tomorrowPredictedUnits} sales tomorrow in ${liveWeatherReport.locationLabel}!`,
+              tween: `Combining your sales logs with tomorrow's forecast in ${liveWeatherReport.locationLabel}, I project ${pennyAnalysis.tomorrowPredictedUnits} units sold.`,
+              teen: `Our Random Forest ensemble forecasts ${pennyAnalysis.tomorrowPredictedUnits} units tomorrow (MAE ${mlEngine.rfMAE} vs. ${mlEngine.baseMAE} baseline).`
+            });
+          } else if (lower.includes('sign') || lower.includes('poster') || lower.includes('idea')) {
+            replyText = formatByAge(kidAgeGroup, {
+              young: `Make a big bright poster that says: "Yummy treats at ${displayShopName}! Help me buy ${displayGoalItem}!"`,
+              kid: `Write in big bubble letters: "Welcome to ${displayShopName}! Every purchase helps ${displayKidName} earn $${financialGoal} for ${displayGoalItem}!"`,
+              tween: `Try a sign with a clear mission: "Support Local Youth Biz! Saving $${financialGoal} for ${displayGoalItem} at ${displayShopName}!"`,
+              teen: `Lead with value and story on your signage: "${displayShopName} — Handcrafted & Fresh. Funding my $${financialGoal} ${displayGoalItem} goal."`
+            });
+          } else if (/^(hi|hello|hey|yo|sup|how are you)/i.test(lower)) {
+            replyText = formatByAge(kidAgeGroup, {
+              young: `Hiya ${displayKidName}! I'm super happy to help with ${displayShopName} today! What should we do first?`,
+              kid: `Hey ${displayKidName}! Awesome to see you at ${displayShopName}. Want to brainstorm ideas, add a product, or check your goal?`,
+              tween: `Hey ${displayKidName}! ${displayShopName} is looking great—you're at $${totalRevenueEarned.toFixed(2)} toward your $${totalTargetRevenue.toFixed(2)} goal. What's on your mind?`,
+              teen: `Hey ${displayKidName}! Good to see you. You've logged $${totalRevenueEarned.toFixed(2)} toward ${displayGoalItem} so far—how can I help optimize today?`
+            });
           } else {
-            replyText = formatByAge(
-              `That sounds awesome, ${displayKidName}! Keep having fun with ${displayShopName}—you're doing great!`,
-              `Love that idea, ${displayKidName}! You're making great progress toward ${displayGoalItem}. Want to brainstorm more or add a product?`,
-              `Great thinking, ${displayKidName}! Staying consistent with ${displayShopName} is how young entrepreneurs hit big goals like ${displayGoalItem}.`,
-              `Solid perspective, ${displayKidName}. Iterating on customer feedback and tracking unit performance will keep ${displayShopName} growing.`
-            );
+            replyText = formatByAge(kidAgeGroup, {
+              young: `That sounds cool, ${displayKidName}! You're doing awesome with ${displayShopName}. Want me to add a new item or give you a fun idea?`,
+              kid: `Great thought, ${displayKidName}! You've earned $${totalRevenueEarned.toFixed(2)} so far for ${displayGoalItem}. Ask me anytime if you want to add an item or check prices!`,
+              tween: `I hear you, ${displayKidName}! Keeping customers excited at ${displayShopName} is key—let me know if you want to add new products or test a bundle deal.`,
+              teen: `Makes sense, ${displayKidName}. Focus on high-margin items and repeat traffic at ${displayShopName}—let me know if you want to model a new product or price point.`
+            });
           }
         }
 
@@ -2397,8 +2403,8 @@ Context if needed:
             setKidName={setKidName}
             kidAgeGroup={kidAgeGroup}
             setKidAgeGroup={setKidAgeGroup}
-            shopCity={shopCity}
-            setShopCity={setShopCity}
+            cityLocation={cityLocation}
+            setCityLocation={setCityLocation}
             parentKnows={parentKnows}
             setParentKnows={setParentKnows}
             contactMethod={contactMethod}
@@ -2456,9 +2462,6 @@ Context if needed:
               </button>
 
               <div className="flex flex-wrap items-center gap-2">
-                <span className={`px-3 py-1.5 rounded-full border text-xs font-black ${theme.pillBg}`}>
-                  {liveWeather.label} • {liveWeather.city}
-                </span>
                 {shopsList.length > 1 && (
                   <select
                     value={activeShopId}
@@ -2534,9 +2537,7 @@ Context if needed:
                         Edit
                       </button>
                     </div>
-                    <div className="text-sm font-black text-slate-950">
-                      {activeMascot.shortName} (Ages {kidAgeGroup})
-                    </div>
+                    <div className="text-sm font-black text-slate-950">{activeMascot.shortName}</div>
                   </div>
                 </div>
 
@@ -2585,9 +2586,9 @@ Context if needed:
             {/* Navigation Pill Bar */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-3 pb-1 flex items-center gap-2 overflow-x-auto">
               {[
-                { id: 'home', label: '🏡 Home Hub' },
+                { id: 'home', label: '🏡 Home' },
                 { id: 'setup', label: '🎯 Goal & Menu' },
-                { id: 'coach', label: '🤖 AI Coach & ML Forecaster' },
+                { id: 'coach', label: '🤖 AI Coach & ML' },
                 { id: 'pos', label: '🧾 Cash Register' },
                 { id: 'dashboard', label: '📈 Tycoon Board' }
               ].map((tab) => (
@@ -2613,13 +2614,16 @@ Context if needed:
                   businessName={displayShopName}
                   setBusinessName={setBusinessName}
                   goalItemName={displayGoalItem}
+                  financialGoal={financialGoal}
+                  durationDays={durationDays}
+                  totalTargetRevenue={totalTargetRevenue}
                   dailySalesTarget={dailySalesTarget}
                   breakEvenPoint={breakEvenPoint}
                   totalRevenueEarned={totalRevenueEarned}
                   netProfitEarned={netProfitEarned}
                   products={products}
-                  liveWeather={liveWeather}
                   pennyAnalysis={pennyAnalysis}
+                  liveWeatherReport={liveWeatherReport}
                   chatMessages={chatMessages}
                   isAiTyping={isAiTyping}
                   onSendChat={handleSendChat}
@@ -2659,20 +2663,28 @@ Context if needed:
               {activeTab === 'coach' && (
                 <PennyCoachPage
                   theme={theme}
-                  kidName={displayKidName}
                   activeMascot={activeMascot}
                   businessName={displayShopName}
                   goalItemName={displayGoalItem}
+                  financialGoal={financialGoal}
+                  durationDays={durationDays}
+                  materialCost={materialCost}
+                  totalTargetRevenue={totalTargetRevenue}
+                  dailySalesTarget={dailySalesTarget}
                   mlEngine={mlEngine}
-                  liveWeather={liveWeather}
                   pennyAnalysis={pennyAnalysis}
+                  liveWeatherReport={liveWeatherReport}
+                  forecastWeather={forecastWeather}
+                  setForecastWeather={setForecastWeather}
                   forecastDow={forecastDow}
                   setForecastDow={setForecastDow}
                   aiEngineStatus={aiEngineStatus}
                   chatMessages={chatMessages}
                   isAiTyping={isAiTyping}
                   onSendChat={handleSendChat}
-                  onAddSuggestedProduct={addProductToInventory}
+                  onAddSuggestedItem={async (item) => {
+                    await addAiSuggestedProductToInventory(item.name, item.price, item.unitCost);
+                  }}
                   onApplyOptimalPrice={() => {
                     setProducts((prev) =>
                       prev.map((p, idx) =>
@@ -2719,6 +2731,7 @@ Context if needed:
                   businessName={displayShopName}
                   goalItemName={displayGoalItem}
                   financialGoal={financialGoal}
+                  materialCost={materialCost}
                   totalTargetRevenue={totalTargetRevenue}
                   dailySalesTarget={dailySalesTarget}
                   breakEvenPoint={breakEvenPoint}
@@ -2769,7 +2782,7 @@ Context if needed:
             </div>
           )}
 
-          {/* End-of-Day Shift Wrap-Up Modal */}
+          {/* End-of-Day Shift Wrap-Up & 3-Jar Profit Splitter Modal */}
           {showShiftWrapUp && (
             <ShiftWrapUpModal
               theme={theme}
@@ -2780,7 +2793,6 @@ Context if needed:
               salesLog={salesLog}
               totalRevenueEarned={totalRevenueEarned}
               netProfitEarned={netProfitEarned}
-              liveWeather={liveWeather}
               pennyAnalysis={pennyAnalysis}
               jarAllocations={jarAllocations}
               setJarAllocations={setJarAllocations}
@@ -2816,22 +2828,26 @@ Context if needed:
       );
     }
 
-    // ========================================================================
+    // ============================================================================
     // HOME HUB PAGE
-    // ========================================================================
+    // ============================================================================
     function HomePage({
       theme,
       kidName,
       activeMascot,
       businessName,
       setBusinessName,
+      goalItemName,
+      financialGoal,
+      durationDays,
+      totalTargetRevenue,
       dailySalesTarget,
       breakEvenPoint,
       totalRevenueEarned,
       netProfitEarned,
       products,
-      liveWeather,
       pennyAnalysis,
+      liveWeatherReport,
       chatMessages,
       isAiTyping,
       onSendChat,
@@ -2922,7 +2938,7 @@ Context if needed:
                 <p className="text-xs leading-relaxed">
                   {chatMessages.length > 0
                     ? chatMessages[chatMessages.length - 1].text
-                    : `Hey ${kidName}! Chat with me below or tell me an item to add to your inventory!`}
+                    : `Hi ${kidName}! Chat with me or tell me to add a product to your inventory!`}
                 </p>
               </div>
 
@@ -2939,7 +2955,7 @@ Context if needed:
                   type="text"
                   value={quickChatInput}
                   onChange={(e) => setQuickChatInput(e.target.value)}
-                  placeholder={`Chat or say "add cookies for $2"...`}
+                  placeholder={`Chat with ${activeMascot.shortName}...`}
                   className={`flex-1 px-3.5 py-2.5 rounded-full border-2 text-xs font-bold outline-none ${theme.inputBg}`}
                 />
                 <button
@@ -2957,7 +2973,7 @@ Context if needed:
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-xl font-black">Inventory</h2>
               <span className={`px-4 py-1.5 rounded-full border text-xs font-black ${theme.innerCream}`}>
-                Total Earned: ${totalRevenueEarned.toFixed(2)}
+                📍 {liveWeatherReport.locationLabel}: {liveWeatherReport.todayTemp}°F
               </span>
             </div>
 
@@ -2999,9 +3015,9 @@ Context if needed:
       );
     }
 
-    // ========================================================================
+    // ============================================================================
     // MODULE 1: GOAL & MENU BUILDER
-    // ========================================================================
+    // ============================================================================
     function GoalSetupPage({
       theme,
       businessName,
@@ -3198,7 +3214,7 @@ Context if needed:
             </div>
 
             <div className={`lg:col-span-7 ${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-6 space-y-4`}>
-              <h2 className="text-lg font-black">2. Product Menu & AI Cartoon Stickers</h2>
+              <h2 className="text-lg font-black">2. Product Menu & Cartoon Stickers</h2>
 
               <form onSubmit={handleAddProduct} className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
                 <input
@@ -3206,7 +3222,7 @@ Context if needed:
                   disabled={isGeneratingImg}
                   value={newItemName}
                   onChange={(e) => setNewItemName(censorKidSafeText(e.target.value))}
-                  placeholder="Item name (e.g. Lemonade, Slime)"
+                  placeholder="Item name (e.g. Lemonade, Cookies)"
                   className={`sm:col-span-5 px-3.5 py-2.5 rounded-2xl border-2 text-sm font-bold ${theme.inputBg}`}
                 />
                 <input
@@ -3245,7 +3261,7 @@ Context if needed:
                   <div className="text-3xl">🎨</div>
                   <div className="font-black text-sm">Your Menu is Empty</div>
                   <p className={`text-xs ${theme.mutedText}`}>
-                    Type an item name and price above—AI will automatically draw a cartoon sticker for it!
+                    Type an item name and price above—a cartoon sticker is created automatically!
                   </p>
                 </div>
               ) : (
@@ -3317,37 +3333,36 @@ Context if needed:
       );
     }
 
-    // ========================================================================
-    // MODULE 2: AI BUSINESS COACH & ML DEMAND/PRICING ENGINE
-    // ========================================================================
+    // ============================================================================
+    // MODULE 2: AI BUSINESS COACH & ML FORECASTER
+    // ============================================================================
     function PennyCoachPage({
       theme,
-      kidName,
       activeMascot,
       businessName,
       goalItemName,
       mlEngine,
-      liveWeather,
       pennyAnalysis,
+      liveWeatherReport,
       forecastDow,
       setForecastDow,
       aiEngineStatus,
       chatMessages,
       isAiTyping,
       onSendChat,
-      onAddSuggestedProduct,
+      onAddSuggestedItem,
       onApplyOptimalPrice,
       onNext,
       onBackHome
     }) {
       const [inputText, setInputText] = useState('');
       const [mlSubTab, setMlSubTab] = useState('forecast');
-      const [addedAltNames, setAddedAltNames] = useState([]);
+      const [addedSuggestionMsg, setAddedSuggestionMsg] = useState('');
 
       const quickPrompts = [
-        `Hey ${activeMascot.shortName}, how's it going?`,
-        `Is today's weather good for selling?`,
-        `Should I raise or lower my price?`,
+        `How is the weather outside today?`,
+        `Should I change my prices for this season?`,
+        `Predict tomorrow's sales`,
         `Add hot cocoa to my inventory`
       ];
 
@@ -3384,9 +3399,8 @@ Context if needed:
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left Column: Natural Age-Adapted AI Chatbot */}
             <div
-              className={`lg:col-span-6 ${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-5 sm:p-6 flex flex-col justify-between space-y-4`}
+              className={`lg:col-span-7 ${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-5 sm:p-6 flex flex-col justify-between space-y-4`}
             >
               <div className="flex items-center justify-between border-b border-black/10 pb-3">
                 <div className="flex items-center gap-3">
@@ -3403,11 +3417,12 @@ Context if needed:
                 </div>
               </div>
 
-              <div className="space-y-3 max-h-96 overflow-y-auto pr-1 py-1">
+              <div className="space-y-3 max-h-80 overflow-y-auto pr-1 py-1">
                 <div className="flex items-start gap-2.5">
                   <PixelMascot type={activeMascot.id} size={34} circular />
                   <div className={`p-3.5 rounded-2xl rounded-tl-sm border text-xs sm:text-sm leading-relaxed max-w-[85%] ${theme.innerCream}`}>
-                    Hey {kidName}! I’m your AI Business Mentor for <strong>{businessName}</strong>. Chat with me about anything—or tell me an item you want to add to your inventory!
+                    Hey there! Ask me anything about {businessName}, check today's live weather in{' '}
+                    <strong>{liveWeatherReport.locationLabel}</strong>, or tell me to add a product to your inventory!
                   </div>
                 </div>
 
@@ -3472,8 +3487,7 @@ Context if needed:
               </div>
             </div>
 
-            {/* Right Column: ML Demand, Smart Pricing + Item-Season Fit, Baseline MAE & Explainability */}
-            <div className="lg:col-span-6 space-y-5">
+            <div className="lg:col-span-5 space-y-5">
               <div className={`${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-5 space-y-4`}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-base font-black">ML Demand & Price Engine</h2>
@@ -3501,24 +3515,32 @@ Context if needed:
 
                 {mlSubTab === 'forecast' ? (
                   <div className="space-y-4">
-                    {/* Live External Weather Feed + Day-of-Week Selector */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <div className={`p-3 rounded-2xl border ${theme.innerCream}`}>
-                        <div className="text-[10px] font-black uppercase opacity-75">
-                          Live Weather ({liveWeather.city})
-                        </div>
-                        <div className="text-sm font-black mt-0.5">{liveWeather.label}</div>
-                        <div className="text-[11px] font-bold text-emerald-600 mt-0.5">
-                          {liveWeather.quality === 'good'
-                            ? '👍 Great day for foot traffic!'
-                            : liveWeather.quality === 'bad'
-                            ? '⚠️ Tough outdoor weather'
-                            : '👌 Steady weather'}
-                        </div>
+                    {/* Live External Weather Feed + Day of Week */}
+                    <div className={`p-3.5 rounded-2xl border ${theme.innerCream} space-y-2`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-black uppercase text-emerald-600">
+                          🌍 Live Weather ({liveWeatherReport.locationLabel})
+                        </span>
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${
+                            liveWeatherReport.isGoodToday
+                              ? 'bg-emerald-500 text-slate-950'
+                              : liveWeatherReport.isBadToday
+                              ? 'bg-rose-400 text-slate-950'
+                              : 'bg-amber-300 text-slate-950'
+                          }`}
+                        >
+                          {liveWeatherReport.isGoodToday
+                            ? '☀️ Good Selling Weather'
+                            : liveWeatherReport.isBadToday
+                            ? '🌧️ Bad Weather Today'
+                            : '⛅ Mild Weather'}
+                        </span>
                       </div>
-                      <div className={`p-3 rounded-2xl border ${theme.innerCream}`}>
-                        <label className="block text-[10px] font-black uppercase opacity-75 mb-1">
-                          Selling Day
+                      <div className="text-xs font-bold">{liveWeatherReport.todayVerdict}</div>
+                      <div className="pt-1">
+                        <label className="block text-[10px] font-extrabold uppercase opacity-75 mb-1">
+                          Tomorrow’s Selling Day
                         </label>
                         <select
                           value={forecastDow}
@@ -3545,8 +3567,8 @@ Context if needed:
                         </div>
                         <div className={`text-[11px] mt-0.5 ${theme.mutedText}`}>
                           {pennyAnalysis.logDaysCount > 0
-                            ? `Blended from ${pennyAnalysis.totalLoggedUnits} logged units + ${liveWeather.city} live weather`
-                            : `Forecasted from ${liveWeather.city} live weather & ${pennyAnalysis.dowObj.label}`}
+                            ? `Blended from ${pennyAnalysis.totalLoggedUnits} logged units + ${liveWeatherReport.tomorrowTemp}°F forecast`
+                            : `Forecasted from ${liveWeatherReport.tomorrowTemp}°F & ${pennyAnalysis.dowObj.label}`}
                         </div>
                       </div>
                       <span className={`px-3 py-1 rounded-full border text-xs font-black ${theme.accentBadge}`}>
@@ -3556,28 +3578,65 @@ Context if needed:
 
                     {/* 2. Smart Pricing & Item-Season Check + Replacement Ideas */}
                     <div
-                      className={`p-4 rounded-2xl border-2 space-y-2.5 ${
-                        pennyAnalysis.seasonFit.status === 'mismatch'
-                          ? 'border-rose-400 bg-rose-500/10'
-                          : 'border-emerald-400/60 ' + theme.innerCream
-                      }`}
+                      className={`p-4 rounded-2xl border-2 ${
+                        pennyAnalysis.seasonFit.status.startsWith('mismatch')
+                          ? 'border-rose-400'
+                          : 'border-emerald-400/60'
+                      } ${theme.innerCream} space-y-2.5`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-[11px] font-black uppercase text-emerald-600">
-                          💡 Smart Pricing & Item-Season Check
+                          💡 Smart Pricing & Product-Season Fit
                         </span>
-                        <span className={`px-2.5 py-0.5 rounded-full border text-[10px] font-black ${theme.accentBadge}`}>
-                          {pennyAnalysis.seasonFit.badge}
-                        </span>
+                        {pennyAnalysis.seasonFit.priceDirection !== 'avoid' && (
+                          <span className="text-xs font-black text-emerald-600">
+                            Target: ${pennyAnalysis.recommendedPrice.toFixed(2)}
+                          </span>
+                        )}
                       </div>
-
-                      <div className="text-sm font-black">{pennyAnalysis.seasonFit.headline}</div>
-                      <div className="text-xs font-extrabold">{pennyAnalysis.priceAction}</div>
+                      <div className="text-sm font-black">{pennyAnalysis.priceAction}</div>
                       <p className={`text-[11px] leading-relaxed ${theme.mutedText}`}>
-                        {pennyAnalysis.seasonFit.advice}
+                        {pennyAnalysis.seasonFit.explanation}
                       </p>
 
-                      {pennyAnalysis.seasonFit.status !== 'mismatch' ? (
+                      {pennyAnalysis.seasonFit.suggestedItems.length > 0 && (
+                        <div className="space-y-1.5 pt-1">
+                          <div className="text-[10px] font-black uppercase text-rose-500">
+                            ✨ Sell These Instead for {liveWeatherReport.todayTemp}°F Weather:
+                          </div>
+                          {pennyAnalysis.seasonFit.suggestedItems.map((sug) => (
+                            <div
+                              key={sug.name}
+                              className={`p-2 rounded-xl border flex items-center justify-between gap-2 text-xs ${theme.card}`}
+                            >
+                              <div>
+                                <div className="font-black">
+                                  {sug.name} (${sug.price.toFixed(2)})
+                                </div>
+                                <div className={`text-[10px] ${theme.mutedText}`}>{sug.reason}</div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await onAddSuggestedItem(sug);
+                                  setAddedSuggestionMsg(`Added ${sug.name} with cartoon sticker!`);
+                                  setTimeout(() => setAddedSuggestionMsg(''), 2800);
+                                }}
+                                className={`px-2.5 py-1.5 rounded-full border font-black text-[10px] whitespace-nowrap cursor-pointer ${theme.primaryBtn}`}
+                              >
+                                + Add to Menu
+                              </button>
+                            </div>
+                          ))}
+                          {addedSuggestionMsg && (
+                            <div className="text-[11px] font-black text-emerald-600">
+                              ✅ {addedSuggestionMsg}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {pennyAnalysis.seasonFit.priceDirection !== 'avoid' && (
                         <button
                           type="button"
                           onClick={onApplyOptimalPrice}
@@ -3585,43 +3644,6 @@ Context if needed:
                         >
                           Apply ${pennyAnalysis.recommendedPrice.toFixed(2)} to Menu →
                         </button>
-                      ) : (
-                        <div className="space-y-2 pt-1">
-                          <div className="text-[11px] font-black uppercase">
-                            🌟 Better Items to Sell Today:
-                          </div>
-                          <div className="space-y-1.5">
-                            {pennyAnalysis.seasonFit.alternatives.map((alt) => {
-                              const alreadyAdded = addedAltNames.includes(alt.name);
-                              return (
-                                <div
-                                  key={alt.name}
-                                  className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 ${theme.card}`}
-                                >
-                                  <div>
-                                    <div className="text-xs font-black">
-                                      {alt.name} (${alt.price.toFixed(2)})
-                                    </div>
-                                    <div className={`text-[10px] ${theme.mutedText}`}>{alt.reason}</div>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    disabled={alreadyAdded}
-                                    onClick={async () => {
-                                      await onAddSuggestedProduct(alt.name, alt.price, alt.cost);
-                                      setAddedAltNames((prev) => [...prev, alt.name]);
-                                    }}
-                                    className={`px-3 py-1.5 rounded-full border font-black text-[11px] cursor-pointer ${
-                                      alreadyAdded ? 'bg-emerald-500 text-slate-950' : theme.primaryBtn
-                                    }`}
-                                  >
-                                    {alreadyAdded ? 'Added ✓' : '+ Add to Menu'}
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
                       )}
                     </div>
 
@@ -3647,7 +3669,7 @@ Context if needed:
                             />
                           </div>
                           <div className={`text-[10px] mt-1 ${theme.mutedText}`}>
-                            Uses weather + season + price
+                            Uses live weather + season + logs
                           </div>
                         </div>
 
@@ -3665,7 +3687,7 @@ Context if needed:
                     </div>
                   </div>
                 ) : (
-                  /* 4. Dedicated AI Confidence & Limitations Tab */
+                  /* 4. AI Confidence & Limitations Tab */
                   <div className="space-y-4">
                     <div className={`p-3.5 rounded-2xl border ${theme.innerCream} space-y-2.5`}>
                       <div className="text-xs font-black text-sky-600 uppercase">
@@ -3693,7 +3715,7 @@ Context if needed:
                       <div className="text-xs font-black text-amber-600 uppercase">
                         ⚠️ Past Anomaly & Forecast Failure Log
                       </div>
-                      <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                         {pennyAnalysis.failureCases.map((fc) => (
                           <div
                             key={fc.dayLabel}
@@ -3720,9 +3742,9 @@ Context if needed:
       );
     }
 
-    // ========================================================================
+    // ============================================================================
     // MODULE 3: BARCODE & CASH REGISTER POS
-    // ========================================================================
+    // ============================================================================
     function RegisterPOSPage({
       theme,
       businessName,
@@ -4136,9 +4158,9 @@ Context if needed:
       );
     }
 
-    // ========================================================================
+    // ============================================================================
     // MODULE 4: TYCOON PROGRESS DASHBOARD
-    // ========================================================================
+    // ============================================================================
     function TycoonDashboardPage({
       theme,
       businessName,
@@ -4480,9 +4502,9 @@ Context if needed:
       );
     }
 
-    // ========================================================================
-    // END-OF-DAY SHIFT WRAP-UP REPORT & 3-JAR PROFIT SPLITTER MODAL
-    // ========================================================================
+    // ============================================================================
+    // END-OF-DAY SHIFT WRAP-UP & 3-JAR PROFIT SPLITTER MODAL
+    // ============================================================================
     function ShiftWrapUpModal({
       theme,
       kidName,
@@ -4492,7 +4514,6 @@ Context if needed:
       salesLog,
       totalRevenueEarned,
       netProfitEarned,
-      liveWeather,
       pennyAnalysis,
       jarAllocations,
       setJarAllocations,
@@ -4525,7 +4546,7 @@ Context if needed:
           }
           const nextChar = Math.min(40, prev.charity + 10);
           const nextGoal = Math.max(20, 100 - prev.supplies - nextChar);
-          return { goal: nextGoal, supplies: prev.supplies, charity: 100 - nextGoal - prev.supplies };
+          return { goal: nextGoal, supplies: prev.supplies, charity: nextChar };
         });
       };
 
@@ -4573,8 +4594,7 @@ Context if needed:
                 </li>
                 <li>
                   🤖 <strong>Tomorrow’s ML Projection:</strong> Aim to sell{' '}
-                  <strong>{pennyAnalysis.tomorrowPredictedUnits} units</strong> in {liveWeather.city} (
-                  {liveWeather.label}) toward {goalItemName}!
+                  <strong>{pennyAnalysis.tomorrowPredictedUnits} units</strong> to stay on track for {goalItemName}!
                 </li>
               </ul>
             </div>
