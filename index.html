@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="canonical" href="https://seedling-lac.vercel.app/" />
   <title>Seedling — Kid Entrepreneurship & AI Demand Forecaster</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -147,9 +148,11 @@
     );
 
     // ============================================================================
-    // CONSTANTS: THEMES, MASCOTS, CATEGORIES, WEATHER & OLLAMA CLOUD CONFIG
+    // CONSTANTS: THEMES, MASCOTS, CATEGORIES, WEATHER & VERCEL / OLLAMA CONFIG
     // ============================================================================
     const STORAGE_KEY = 'seedling_kidbiz_state_v2';
+    const SITE_BASE_URL = 'https://seedling-lac.vercel.app';
+    const VERCEL_CHAT_PROXY_URL = 'https://seedling-lac.vercel.app/api/chat';
     const OLLAMA_API_URL = 'https://ollama.com/v1/chat/completions';
     const OLLAMA_MODEL_NAME = 'deepseek-v4.1-flash';
     const OLLAMA_API_KEY = '5328c6d502ac457c9fd04bd5f5260460.TQy8arLIt0cE10Xvv8X67BMY';
@@ -1988,7 +1991,7 @@
         return variants.teen;
       };
 
-      // Natural Age-Adapted AI Chatbot with Ollama Cloud (CORS Proxy Relay) + Product Add Flow
+      // Natural Age-Adapted AI Chatbot with Vercel Serverless Proxy (https://seedling-lac.vercel.app/api/chat) + Product Add Flow
       const handleSendChat = async (textToSend) => {
         const cleanText = (textToSend || '').trim();
         if (!cleanText) return;
@@ -2114,7 +2117,7 @@
             ? 'Speak to a 10-12 year old: use an encouraging junior-CEO tone introducing real business terms naturally.'
             : 'Speak to a 13+ teen founder: use sharp, practical startup and data-science language.';
 
-        const systemPrompt = `You are ${activeMascot.shortName}, a natural, warm conversational AI Business Mentor inside Seedling.
+        const systemPrompt = `You are ${activeMascot.shortName}, a natural, warm conversational AI Business Mentor inside Seedling (${SITE_BASE_URL}).
 ${ageToneInstruction}
 Respond naturally like a real friendly mentor—have a normal conversation, answer what the user actually asked, and ONLY bring up weather, pricing, or ML forecasts when relevant or asked. Keep replies concise (2-3 sentences). Stay 100% G-rated.
 Context:
@@ -2126,8 +2129,7 @@ Context:
 - Tomorrow ML Forecast: ${pennyAnalysis.tomorrowPredictedUnits} units.`;
 
         let replyText = '';
-
-        // 1. Try Ollama Cloud (deepseek-v4.1-flash) directly, with automatic CORS-proxy relay fallback for Vercel
+        // Try relative /api/chat, https://seedling-lac.vercel.app/api/chat, and direct Ollama Cloud
         const ollamaPayload = JSON.stringify({
           model: OLLAMA_MODEL_NAME,
           messages: [
@@ -2140,22 +2142,23 @@ Context:
           ]
         });
 
-        const ollamaEndpoints = [
-          OLLAMA_API_URL,
-          `https://corsproxy.io/?url=${encodeURIComponent(OLLAMA_API_URL)}`
-        ];
+        const endpoints = ['/api/chat', VERCEL_CHAT_PROXY_URL, OLLAMA_API_URL];
 
-        for (const endpoint of ollamaEndpoints) {
+        for (const endpoint of endpoints) {
           if (replyText) break;
           try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 6000);
+            const timeoutId = setTimeout(() => controller.abort(), 7000);
+            const isProxy = endpoint.includes('/api/chat');
+            const headers = isProxy
+              ? { 'Content-Type': 'application/json' }
+              : {
+                  'Authorization': `Bearer ${OLLAMA_API_KEY}`,
+                  'Content-Type': 'application/json'
+                };
             const res = await fetch(endpoint, {
               method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${OLLAMA_API_KEY}`,
-                'Content-Type': 'application/json'
-              },
+              headers,
               signal: controller.signal,
               body: ollamaPayload
             });
@@ -2171,7 +2174,7 @@ Context:
           } catch (err) {}
         }
 
-        // 2. Natural Age-Adapted Conversational Fallback (if network/proxy is blocked)
+        // 2. Natural Age-Adapted Conversational Fallback
         if (!replyText) {
           setAiEngineStatus('AI Coach Ready');
           const lower = censoredUserText.toLowerCase();
@@ -2666,16 +2669,9 @@ Context:
                   activeMascot={activeMascot}
                   businessName={displayShopName}
                   goalItemName={displayGoalItem}
-                  financialGoal={financialGoal}
-                  durationDays={durationDays}
-                  materialCost={materialCost}
-                  totalTargetRevenue={totalTargetRevenue}
-                  dailySalesTarget={dailySalesTarget}
                   mlEngine={mlEngine}
                   pennyAnalysis={pennyAnalysis}
                   liveWeatherReport={liveWeatherReport}
-                  forecastWeather={forecastWeather}
-                  setForecastWeather={setForecastWeather}
                   forecastDow={forecastDow}
                   setForecastDow={setForecastDow}
                   aiEngineStatus={aiEngineStatus}
@@ -2731,7 +2727,6 @@ Context:
                   businessName={displayShopName}
                   goalItemName={displayGoalItem}
                   financialGoal={financialGoal}
-                  materialCost={materialCost}
                   totalTargetRevenue={totalTargetRevenue}
                   dailySalesTarget={dailySalesTarget}
                   breakEvenPoint={breakEvenPoint}
@@ -2837,16 +2832,10 @@ Context:
       activeMascot,
       businessName,
       setBusinessName,
-      goalItemName,
-      financialGoal,
-      durationDays,
-      totalTargetRevenue,
       dailySalesTarget,
       breakEvenPoint,
-      totalRevenueEarned,
       netProfitEarned,
       products,
-      pennyAnalysis,
       liveWeatherReport,
       chatMessages,
       isAiTyping,
@@ -3340,7 +3329,6 @@ Context:
       theme,
       activeMascot,
       businessName,
-      goalItemName,
       mlEngine,
       pennyAnalysis,
       liveWeatherReport,
