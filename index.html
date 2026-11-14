@@ -2129,7 +2129,7 @@ Context:
 - Tomorrow ML Forecast: ${pennyAnalysis.tomorrowPredictedUnits} units.`;
 
         let replyText = '';
-        // Try relative /api/chat, https://seedling-lac.vercel.app/api/chat, and direct Ollama Cloud
+        // Call Vercel Serverless Proxy (/api/chat) to avoid browser CORS errors
         const ollamaPayload = JSON.stringify({
           model: OLLAMA_MODEL_NAME,
           messages: [
@@ -2142,37 +2142,25 @@ Context:
           ]
         });
 
-        const endpoints = ['/api/chat', VERCEL_CHAT_PROXY_URL, OLLAMA_API_URL];
-
-        for (const endpoint of endpoints) {
-          if (replyText) break;
-          try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 7000);
-            const isProxy = endpoint.includes('/api/chat');
-            const headers = isProxy
-              ? { 'Content-Type': 'application/json' }
-              : {
-                  'Authorization': `Bearer ${OLLAMA_API_KEY}`,
-                  'Content-Type': 'application/json'
-                };
-            const res = await fetch(endpoint, {
-              method: 'POST',
-              headers,
-              signal: controller.signal,
-              body: ollamaPayload
-            });
-            clearTimeout(timeoutId);
-            if (res.ok) {
-              const data = await res.json();
-              const ollamaContent = data?.choices?.[0]?.message?.content;
-              if (ollamaContent) {
-                replyText = censorKidSafeText(ollamaContent.trim());
-                setAiEngineStatus('AI Online');
-              }
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 7000);
+          const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            body: ollamaPayload
+          });
+          clearTimeout(timeoutId);
+          if (res.ok) {
+            const data = await res.json();
+            const ollamaContent = data?.choices?.[0]?.message?.content;
+            if (ollamaContent) {
+              replyText = censorKidSafeText(ollamaContent.trim());
+              setAiEngineStatus('AI Online');
             }
-          } catch (err) {}
-        }
+          }
+        } catch (err) {}
 
         // 2. Natural Age-Adapted Conversational Fallback
         if (!replyText) {
