@@ -148,14 +148,11 @@
     );
 
     // ============================================================================
-    // CONSTANTS: THEMES, MASCOTS, CATEGORIES, WEATHER & VERCEL / OLLAMA CONFIG
+    // CONSTANTS: THEMES, PIXEL MASCOTS, CATEGORIES, WEATHER & DAY OF WEEK
     // ============================================================================
-    const STORAGE_KEY = 'seedling_kidbiz_state_v2';
+    const STORAGE_KEY = 'seedling_kidbiz_state_v1';
     const SITE_BASE_URL = 'https://seedling-lac.vercel.app';
-    const VERCEL_CHAT_PROXY_URL = 'https://seedling-lac.vercel.app/api/chat';
-    const OLLAMA_API_URL = 'https://ollama.com/v1/chat/completions';
-    const OLLAMA_MODEL_NAME = 'deepseek-v4.1-flash';
-    const OLLAMA_API_KEY = '5328c6d502ac457c9fd04bd5f5260460.TQy8arLIt0cE10Xvv8X67BMY';
+    const OLLAMA_MODEL_NAME = 'llama3.2';
 
     const THEMES = {
       mint: {
@@ -270,191 +267,6 @@
     ];
 
     // ============================================================================
-    // LIVE EXTERNAL WEATHER SERVICE (OPEN-METEO — DEFAULT: EDISON, NJ)
-    // ============================================================================
-    function mapWeatherCodeToCondition(code, tempF) {
-      if (
-        (code >= 51 && code <= 67) ||
-        (code >= 71 && code <= 86) ||
-        (code >= 95 && code <= 99) ||
-        tempF < 52
-      ) {
-        return 'rainy';
-      }
-      if ((code === 0 || code === 1) && tempF >= 64) {
-        return 'sunny';
-      }
-      return 'cloudy';
-    }
-
-    async function fetchExternalWeatherForecast(cityName = 'Edison, NJ') {
-      let lat = 40.5187;
-      let lon = -74.4121;
-      let locationLabel = 'Edison, NJ';
-
-      const cleanCity = (cityName || '').trim();
-      if (cleanCity && cleanCity.toLowerCase() !== 'edison, nj' && cleanCity.toLowerCase() !== 'edison') {
-        try {
-          const geoRes = await fetch(
-            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cleanCity)}&count=1&language=en&format=json`
-          );
-          if (geoRes.ok) {
-            const geoData = await geoRes.json();
-            if (geoData?.results?.[0]) {
-              lat = geoData.results[0].latitude;
-              lon = geoData.results[0].longitude;
-              locationLabel = `${geoData.results[0].name}${
-                geoData.results[0].admin1 ? ', ' + geoData.results[0].admin1 : ''
-              }`;
-            }
-          }
-        } catch (e) {}
-      }
-
-      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max&temperature_unit=fahrenheit&timezone=auto&forecast_days=2`;
-      const res = await fetch(weatherUrl);
-      if (!res.ok) throw new Error('Weather API unavailable');
-      const data = await res.json();
-
-      const todayTemp = Math.round(data.current?.temperature_2m ?? 68);
-      const todayCode = data.current?.weather_code ?? 1;
-      const tomorrowTemp = Math.round(data.daily?.temperature_2m_max?.[1] ?? todayTemp);
-      const tomorrowCode = data.daily?.weather_code?.[1] ?? todayCode;
-
-      const todayCondition = mapWeatherCodeToCondition(todayCode, todayTemp);
-      const tomorrowCondition = mapWeatherCodeToCondition(tomorrowCode, tomorrowTemp);
-
-      const isGoodToday = todayCondition === 'sunny';
-      const isBadToday = todayCondition === 'rainy';
-      const todayVerdict = isGoodToday
-        ? `Good weather today (${todayTemp}°F, clear & warm — great for outdoor shoppers!)`
-        : isBadToday
-        ? `Tough weather today (${todayTemp}°F, chilly or wet — fewer people walking outside)`
-        : `Okay weather today (${todayTemp}°F, mild & partly cloudy)`;
-
-      return {
-        locationLabel,
-        todayTemp,
-        todayCondition,
-        todayVerdict,
-        isGoodToday,
-        isBadToday,
-        tomorrowTemp,
-        tomorrowCondition
-      };
-    }
-
-    // ============================================================================
-    // PRODUCT-SEASON FIT & SMART REPLACEMENT ENGINE
-    // ============================================================================
-    function analyzeProductSeasonFit(products, tempF, conditionId) {
-      const month = new Date().getMonth();
-      const isWinterOrCold = tempF < 55 || month === 11 || month === 0 || month === 1;
-      const isHotOrSummer = tempF >= 76 || (month >= 5 && month <= 7 && tempF >= 68);
-      const isRainy = conditionId === 'rainy';
-
-      const summerKeywords = [
-        'snowcone', 'snow cone', 'shaved ice', 'lemonade', 'iced', 'ice cream',
-        'popsicle', 'slush', 'smoothie', 'cold brew', 'watermelon', 'soda'
-      ];
-      const winterKeywords = [
-        'hot cocoa', 'hot chocolate', 'cider', 'coffee', 'tea', 'soup',
-        'warm', 'scarf', 'mitten', 'beanie', 'chili'
-      ];
-
-      let coldItem = null;
-      let hotItem = null;
-
-      for (const p of products) {
-        const lower = p.name.toLowerCase();
-        if (summerKeywords.some((k) => lower.includes(k))) coldItem = p;
-        if (winterKeywords.some((k) => lower.includes(k))) hotItem = p;
-      }
-
-      if (coldItem && isWinterOrCold) {
-        return {
-          status: 'mismatch_cold',
-          itemName: coldItem.name,
-          headline: `Don't sell ${coldItem.name} in ${tempF}°F weather!`,
-          explanation: `${coldItem.name} is a warm-weather treat, and at ${tempF}°F customers want cozy items instead.`,
-          priceDirection: 'avoid',
-          priceDelta: 0,
-          suggestedItems: [
-            { name: 'Hot Cocoa Cup', price: 2.5, unitCost: 0.45, reason: `Cozy bestseller for ${tempF}°F weather` },
-            { name: 'Warm Chocolate Chip Cookies', price: 2.0, unitCost: 0.4, reason: 'Easy indoor/outdoor winter treat' },
-            { name: 'Friendship Bracelets', price: 3.0, unitCost: 0.5, reason: 'All-season craft with high profit margin' }
-          ]
-        };
-      }
-
-      if (hotItem && isHotOrSummer) {
-        return {
-          status: 'mismatch_hot',
-          itemName: hotItem.name,
-          headline: `Skip ${hotItem.name} in ${tempF}°F heat!`,
-          explanation: `At ${tempF}°F, shoppers crave cold refreshments instead of hot drinks.`,
-          priceDirection: 'avoid',
-          priceDelta: 0,
-          suggestedItems: [
-            { name: 'Ice-Cold Lemonade', price: 2.5, unitCost: 0.35, reason: `High-demand thirst quencher at ${tempF}°F` },
-            { name: 'Rainbow Snow Cones', price: 3.0, unitCost: 0.4, reason: 'Top summer profit maker' },
-            { name: 'Fruit Popsicles', price: 2.0, unitCost: 0.45, reason: 'Fast grab-and-go warm weather treat' }
-          ]
-        };
-      }
-
-      if (coldItem && isHotOrSummer) {
-        return {
-          status: 'peak_match',
-          itemName: coldItem.name,
-          headline: `Peak Season for ${coldItem.name}! Raise price +$0.50`,
-          explanation: `${tempF}°F heat creates strong demand for ${coldItem.name}—customers gladly pay a little more!`,
-          priceDirection: 'raise',
-          priceDelta: 0.5,
-          suggestedItems: []
-        };
-      }
-
-      if (hotItem && isWinterOrCold) {
-        return {
-          status: 'peak_match',
-          itemName: hotItem.name,
-          headline: `Peak Season for ${hotItem.name}! Raise price +$0.50`,
-          explanation: `Chilly ${tempF}°F weather boosts demand for ${hotItem.name}, letting you raise margins!`,
-          priceDirection: 'raise',
-          priceDelta: 0.5,
-          suggestedItems: []
-        };
-      }
-
-      if (isRainy) {
-        return {
-          status: 'rainy_adjust',
-          itemName: products[0]?.name || 'your menu',
-          headline: `Rainy Day Alert (${tempF}°F) — Offer a Small Deal or Indoor Craft`,
-          explanation: 'Rainy weather lowers sidewalk traffic, so a small discount or take-home kit helps close sales.',
-          priceDirection: 'lower',
-          priceDelta: -0.25,
-          suggestedItems: [
-            { name: 'DIY Slime Kit', price: 3.5, unitCost: 0.65, reason: 'Kids love indoor activities on rainy days' },
-            { name: 'Mini Brownie Pack', price: 2.25, unitCost: 0.45, reason: 'Great take-home comfort snack' },
-            { name: 'Sticker Mystery Pack', price: 2.0, unitCost: 0.3, reason: 'Weather-proof & super high profit' }
-          ]
-        };
-      }
-
-      return {
-        status: 'neutral_good',
-        itemName: products[0]?.name || 'your menu',
-        headline: `Good Seasonal Fit (${tempF}°F)`,
-        explanation: `Your menu fits ${tempF}°F weather well! Small price tweaks can maximize daily profit.`,
-        priceDirection: 'optimize',
-        priceDelta: 0.25,
-        suggestedItems: []
-      };
-    }
-
-    // ============================================================================
     // KID-SAFE PROFANITY & SLANG CENSOR FILTER
     // ============================================================================
     const BANNED_TERMS = [
@@ -533,7 +345,22 @@
       let accentColor = '#FBBF24';
       let detailSvg = '';
 
-      if (lower.includes('slime')) {
+      if (lower.includes('cocoa') || lower.includes('hot chocolate') || lower.includes('coffee') || lower.includes('tea') || lower.includes('cider')) {
+        bgTop = '#FEE2E2';
+        bgBot = '#FEF3C7';
+        detailSvg = `
+          <path d="M46 28 Q42 20 48 14" stroke="#94A3B8" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M62 28 Q58 20 64 14" stroke="#94A3B8" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M84 52 C98 52, 98 76, 84 76" stroke="#0F172A" stroke-width="4" fill="none"/>
+          <rect x="34" y="42" width="50" height="48" rx="10" fill="#FB7185" stroke="#0F172A" stroke-width="4"/>
+          <ellipse cx="59" cy="44" rx="22" ry="6" fill="#78350F"/>
+          <circle cx="52" cy="44" r="4" fill="#FFF"/>
+          <circle cx="65" cy="44" r="4" fill="#FFF"/>
+          <circle cx="51" cy="65" r="2.8" fill="#0F172A"/>
+          <circle cx="67" cy="65" r="2.8" fill="#0F172A"/>
+          <path d="M55 71 Q60 76 63 71" stroke="#0F172A" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+        `;
+      } else if (lower.includes('slime')) {
         bgTop = '#FAE8FF';
         bgBot = '#CCFBF1';
         mainColor = '#2DD4BF';
@@ -546,32 +373,6 @@
           <circle cx="50" cy="66" r="3" fill="#0F172A"/>
           <circle cx="70" cy="66" r="3" fill="#0F172A"/>
           <path d="M55 71 Q60 76 65 71" stroke="#0F172A" stroke-width="3" fill="none" stroke-linecap="round"/>
-        `;
-      } else if (lower.includes('cocoa') || lower.includes('hot chocolate') || lower.includes('coffee') || lower.includes('tea') || lower.includes('cider')) {
-        bgTop = '#FEF3C7';
-        bgBot = '#FFEDD5';
-        detailSvg = `
-          <path d="M46 28 Q42 20 48 14" stroke="#94A3B8" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-          <path d="M62 28 Q58 20 64 14" stroke="#94A3B8" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-          <path d="M84 48 H94 A10 10 0 0 1 94 72 H84" fill="none" stroke="#0F172A" stroke-width="4"/>
-          <rect x="34" y="40" width="50" height="48" rx="10" fill="#F43F5E" stroke="#0F172A" stroke-width="4"/>
-          <ellipse cx="59" cy="42" rx="22" ry="6" fill="#78350F"/>
-          <circle cx="52" cy="41" r="4" fill="#FFFFFF"/>
-          <circle cx="64" cy="42" r="3.5" fill="#FFFFFF"/>
-          <circle cx="50" cy="64" r="3" fill="#0F172A"/>
-          <circle cx="68" cy="64" r="3" fill="#0F172A"/>
-          <path d="M55 70 Q60 75 64 70" stroke="#0F172A" stroke-width="3" fill="none" stroke-linecap="round"/>
-        `;
-      } else if (lower.includes('snow') || lower.includes('ice') || lower.includes('popsicle') || lower.includes('slush')) {
-        bgTop = '#E0F2FE';
-        bgBot = '#FCE7F3';
-        detailSvg = `
-          <polygon points="40,56 80,56 60,102" fill="#FDE68A" stroke="#0F172A" stroke-width="4" stroke-linejoin="round"/>
-          <circle cx="60" cy="48" r="24" fill="#38BDF8" stroke="#0F172A" stroke-width="4"/>
-          <path d="M38 44 A22 22 0 0 1 82 44 Z" fill="#F472B6"/>
-          <circle cx="52" cy="48" r="3" fill="#0F172A"/>
-          <circle cx="68" cy="48" r="3" fill="#0F172A"/>
-          <path d="M56 53 Q60 57 64 53" stroke="#0F172A" stroke-width="2.8" fill="none" stroke-linecap="round"/>
         `;
       } else if (lower.includes('lemon') || lower.includes('juice') || lower.includes('drink')) {
         bgTop = '#FEF9C3';
@@ -783,92 +584,250 @@
     }
 
     // ============================================================================
-    // CLIENT-SIDE RANDOM FOREST REGRESSOR + PERSISTENCE BASELINE AUDIT
+    // REAL LIVE WEATHER & SEASONAL PRODUCT-FIT ENGINE (OPEN-METEO)
     // ============================================================================
-    function trainAndEvaluatePennyML() {
-      let seed = 42;
-      const rand = () => {
-        seed = (seed * 1664525 + 1013904223) % 4294967296;
-        return seed / 4294967296;
+    async function fetchExternalWeatherForecast(cityInput = 'Edison, NJ') {
+      const cleanCity = (cityInput || 'Edison, NJ').trim();
+      const geoRes = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cleanCity)}&count=1&language=en&format=json`
+      );
+      const geoData = await geoRes.json();
+      const place = geoData?.results?.[0] || {
+        name: 'Edison',
+        admin1: 'New Jersey',
+        latitude: 40.5187,
+        longitude: -74.4121
       };
 
-      const dataset = [];
-      for (let i = 0; i < 240; i++) {
-        const catIdx = i % 4;
-        const durationDays = 1 + (i % 7);
-        const unitCost = Number((0.35 + catIdx * 0.15 + rand() * 0.25).toFixed(2));
-        const price = Number((1.0 + (i % 10) * 0.75 + rand() * 0.5).toFixed(2));
-        const weatherIdx = i % 3;
-        const dowIdx = i % 4;
+      const weatherRes = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,weather_code&daily=temperature_2m_max,weather_code&temperature_unit=fahrenheit&timezone=auto`
+      );
+      const wData = await weatherRes.json();
+      const todayTemp = Math.round(wData?.current?.temperature_2m ?? 54);
+      const todayCode = wData?.current?.weather_code ?? 2;
+      const tomorrowTemp = Math.round(wData?.daily?.temperature_2m_max?.[1] ?? todayTemp);
+      const tomorrowCode = wData?.daily?.weather_code?.[1] ?? todayCode;
 
-        const weatherMult = [1.28, 1.0, 0.64][weatherIdx];
-        const dowMult = [1.32, 1.2, 1.05, 0.82][dowIdx];
-        const baseDemand = 22 - price * 1.45 + (3 - catIdx) * 1.2;
-        const noise = (rand() - 0.5) * 3.0;
-        const actualUnits = Math.max(2, Number((baseDemand * weatherMult * dowMult + noise).toFixed(1)));
-        const yesterdayUnits = Math.max(2, Number((actualUnits * (0.72 + rand() * 0.55)).toFixed(1)));
-
-        dataset.push({
-          features: [catIdx, durationDays, unitCost, price, weatherIdx, dowIdx],
-          target: actualUnits,
-          yesterdayUnits
-        });
-      }
-
-      const splitIdx = Math.floor(dataset.length * 0.8);
-      const trainSet = dataset.slice(0, splitIdx);
-      const testSet = dataset.slice(splitIdx);
-
-      const trees = [];
-      for (let t = 0; t < 18; t++) {
-        const boot = Array.from({ length: trainSet.length }, () => {
-          const idx = Math.floor(rand() * trainSet.length);
-          return trainSet[idx];
-        });
-        const featIdx = t % 6;
-        const vals = boot.map((r) => r.features[featIdx]).sort((a, b) => a - b);
-        const threshold = vals[Math.floor(vals.length / 2)];
-        const left = boot.filter((r) => r.features[featIdx] <= threshold);
-        const right = boot.filter((r) => r.features[featIdx] > threshold);
-        const leftMean =
-          left.length > 0 ? left.reduce((s, r) => s + r.target, 0) / left.length : 12;
-        const rightMean =
-          right.length > 0 ? right.reduce((s, r) => s + r.target, 0) / right.length : 12;
-        trees.push({ featIdx, threshold, leftMean, rightMean });
-      }
-
-      const predictDemand = (catIdx, durationDays, unitCost, price, weatherIdx = 0, dowIdx = 0) => {
-        const feats = [catIdx, durationDays, unitCost, price, weatherIdx, dowIdx];
-        const treeAvg =
-          trees.reduce(
-            (sum, tr) => sum + (feats[tr.featIdx] <= tr.threshold ? tr.leftMean : tr.rightMean),
-            0
-          ) / trees.length;
-        const weatherMult = [1.25, 1.0, 0.65][weatherIdx] || 1.0;
-        const dowMult = [1.3, 1.2, 1.05, 0.82][dowIdx] || 1.0;
-        const elasticityAdj = Math.max(2.5, (20 - price * 1.35) * weatherMult * dowMult);
-        return Number((0.45 * treeAvg + 0.55 * elasticityAdj).toFixed(1));
+      const mapCodeToCond = (code) => {
+        if (code >= 51) return 'rainy';
+        if (code <= 1) return 'sunny';
+        return 'cloudy';
       };
 
-      let rfAbsErr = 0;
-      let baseAbsErr = 0;
+      const todayCondition = mapCodeToCond(todayCode);
+      const tomorrowCondition = mapCodeToCond(tomorrowCode);
+      const locationLabel = place.admin1 ? `${place.name}, ${place.admin1}` : place.name;
 
-      testSet.forEach((row) => {
-        const pred = predictDemand(...row.features);
-        rfAbsErr += Math.abs(pred - row.target);
-        baseAbsErr += Math.abs(row.yesterdayUnits - row.target);
-      });
+      let todayVerdict = `Mild weather today (${todayTemp}°F, partly cloudy)`;
+      let isGoodToday = false;
+      let isBadToday = false;
 
-      const rfMAE = Number((rfAbsErr / testSet.length).toFixed(2));
-      const baseMAE = Number((baseAbsErr / testSet.length).toFixed(2));
-      const maeImprovementPct = Math.max(12, Math.round(((baseMAE - rfMAE) / Math.max(0.1, baseMAE)) * 100));
+      if (todayCondition === 'rainy' || todayTemp < 42) {
+        todayVerdict = `Chilly/wet weather today (${todayTemp}°F) — indoor or warm items work best`;
+        isBadToday = true;
+      } else if (todayCondition === 'sunny' && todayTemp >= 68) {
+        todayVerdict = `Great sunny weather today (${todayTemp}°F) — awesome outdoor foot traffic!`;
+        isGoodToday = true;
+      }
 
       return {
-        predictDemand,
-        testCount: testSet.length,
-        rfMAE,
-        baseMAE,
-        maeImprovementPct
+        locationLabel,
+        todayTemp,
+        todayCondition,
+        todayVerdict,
+        isGoodToday,
+        isBadToday,
+        tomorrowTemp,
+        tomorrowCondition
+      };
+    }
+
+    function analyzeProductSeasonFit(products, tempF, condition) {
+      const hasColdDrink = products.some((p) =>
+        /lemonade|iced|ice cream|snow|slush|smoothie|popsicle|soda|juice|cold/i.test(p.name)
+      );
+      const hasHotDrink = products.some((p) =>
+        /cocoa|hot chocolate|coffee|tea|cider|warm/i.test(p.name)
+      );
+
+      if (tempF < 60 && hasColdDrink && !hasHotDrink) {
+        return {
+          status: 'mismatch_cold',
+          priceDirection: 'avoid',
+          headline: `Switch to warm treats for ${tempF}°F weather!`,
+          explanation: `At ${tempF}°F, customers rarely buy cold drinks like Lemonade. Warm items sell much faster right now.`,
+          suggestedItems: [
+            { name: 'Hot Cocoa Cup', price: 2.5, unitCost: 0.45, reason: `Cozy bestseller in ${tempF}°F weather` },
+            { name: 'Warm Chocolate Chip Cookies', price: 2.0, unitCost: 0.4, reason: 'Easy grab-and-go snack' }
+          ]
+        };
+      }
+
+      if (tempF >= 78 && hasHotDrink && !hasColdDrink) {
+        return {
+          status: 'mismatch_hot',
+          priceDirection: 'avoid',
+          headline: `Offer cold drinks for ${tempF}°F heat!`,
+          explanation: `It's ${tempF}°F outside! Cold refreshments outsell hot drinks when it's warm.`,
+          suggestedItems: [
+            { name: 'Fresh Squeezed Lemonade', price: 2.5, unitCost: 0.4, reason: `High thirst demand at ${tempF}°F` },
+            { name: 'Rainbow Snow Cones', price: 3.0, unitCost: 0.35, reason: 'Great warm-weather profit margin' }
+          ]
+        };
+      }
+
+      if ((tempF >= 72 && hasColdDrink) || (tempF < 58 && hasHotDrink)) {
+        return {
+          status: 'peak_match',
+          priceDirection: 'raise',
+          headline: 'Great weather match for your menu!',
+          explanation: `Your menu fits today's ${tempF}°F weather really well—strong customer interest expected.`,
+          suggestedItems: []
+        };
+      }
+
+      return {
+        status: 'neutral',
+        priceDirection: 'keep',
+        headline: 'Balanced menu for today’s weather',
+        explanation: `Your items fit ${tempF}°F (${condition}) weather nicely.`,
+        suggestedItems: []
+      };
+    }
+
+    // ============================================================================
+    // REAL-DATA DEMAND & SMART PRICING ENGINE (COMPUTED FROM ACTUAL SHOP LOGS)
+    // ============================================================================
+    function evaluateRealShopDemand({
+      products,
+      salesLog,
+      activeDay,
+      liveWeatherReport,
+      forecastDow,
+      materialCost,
+      totalTargetRevenue,
+      durationDays
+    }) {
+      const dowObj = DAY_OF_WEEK_OPTIONS.find((d) => d.id === forecastDow) || DAY_OF_WEEK_OPTIONS[0];
+      const weatherObj =
+        WEATHER_OPTIONS.find((w) => w.id === liveWeatherReport.tomorrowCondition) || WEATHER_OPTIONS[1];
+
+      // 1. Real menu & margin stats from actual products
+      const avgSellingPrice =
+        products.length > 0
+          ? Number((products.reduce((s, p) => s + p.price, 0) / products.length).toFixed(2))
+          : 2.5;
+      const avgUnitCost =
+        products.length > 0
+          ? Number((products.reduce((s, p) => s + p.unitCost, 0) / products.length).toFixed(2))
+          : 0.45;
+      const avgUnitProfit = Number(Math.max(0.1, avgSellingPrice - avgUnitCost).toFixed(2));
+
+      // 2. Real sales history grouped by day
+      const dailyUnitsMap = {};
+      salesLog.forEach((tx) => {
+        const d = tx.day || 1;
+        dailyUnitsMap[d] = (dailyUnitsMap[d] || 0) + (tx.unitsCount || 1);
+      });
+      const loggedDays = Object.keys(dailyUnitsMap)
+        .map(Number)
+        .sort((a, b) => a - b);
+      const totalLoggedUnits = salesLog.reduce((s, tx) => s + (tx.unitsCount || 1), 0);
+      const avgDailyUnits =
+        loggedDays.length > 0 ? Number((totalLoggedUnits / loggedDays.length).toFixed(1)) : null;
+
+      // 3. Seasonal fit check based on real Open-Meteo temperature
+      const seasonFit = analyzeProductSeasonFit(
+        products,
+        liveWeatherReport.todayTemp,
+        liveWeatherReport.todayCondition
+      );
+
+      // 4. Tomorrow's unit forecast using actual sales pace (if logged) + real Open-Meteo weather + day trend
+      const baseUnits = avgDailyUnits !== null ? avgDailyUnits : Math.max(4, Math.round(12 - avgSellingPrice * 0.6));
+      const seasonMult = seasonFit.status.startsWith('mismatch') ? 0.65 : seasonFit.status === 'peak_match' ? 1.2 : 1.0;
+      const tomorrowPredictedUnits = Math.max(
+        1,
+        Math.round(baseUnits * weatherObj.demandMult * dowObj.demandMult * seasonMult)
+      );
+
+      // 5. Real error & anomaly tracking computed purely from actual logged days (no fake test days!)
+      const realDayVariances = [];
+      for (let i = 1; i < loggedDays.length; i++) {
+        const prevDay = loggedDays[i - 1];
+        const currDay = loggedDays[i];
+        const prevUnits = dailyUnitsMap[prevDay];
+        const actualUnits = dailyUnitsMap[currDay];
+        const diff = Math.abs(actualUnits - prevUnits);
+        realDayVariances.push({
+          dayLabel: `Day ${currDay} vs. Day ${prevDay}`,
+          predicted: `${prevUnits} units`,
+          actual: `${actualUnits} units`,
+          error: `${diff} unit${diff === 1 ? '' : 's'} diff`,
+          reason:
+            actualUnits > prevUnits
+              ? `Sales jumped by +${actualUnits - prevUnits} units compared to Day ${prevDay}.`
+              : actualUnits < prevUnits
+              ? `Sales dipped by -${prevUnits - actualUnits} units compared to Day ${prevDay}.`
+              : `Exact same unit volume as Day ${prevDay}.`
+        });
+      }
+
+      const realAvgDaySwing =
+        realDayVariances.length > 0
+          ? Number(
+              (
+                realDayVariances.reduce((sum, item, idx) => {
+                  const prevU = dailyUnitsMap[loggedDays[idx]];
+                  const currU = dailyUnitsMap[loggedDays[idx + 1]];
+                  return sum + Math.abs(currU - prevU);
+                }, 0) / realDayVariances.length
+              ).toFixed(1)
+            )
+          : null;
+
+      // 6. Smart price action based on real unit cost, margin & live temperature
+      let recommendedPrice = avgSellingPrice;
+      let priceAction = 'Keep your current price';
+      if (seasonFit.priceDirection === 'avoid') {
+        priceAction = seasonFit.headline;
+      } else if (seasonFit.priceDirection === 'raise') {
+        recommendedPrice = Number((avgSellingPrice + 0.5).toFixed(2));
+        priceAction = `Raise price +$0.50 to $${recommendedPrice.toFixed(2)}`;
+      } else if (seasonFit.priceDirection === 'lower') {
+        recommendedPrice = Math.max(0.5, Number((avgSellingPrice - 0.25).toFixed(2)));
+        priceAction = `Lower price -$0.25 to $${recommendedPrice.toFixed(2)}`;
+      } else if (avgUnitProfit < 0.75) {
+        recommendedPrice = Number((avgSellingPrice + 0.25).toFixed(2));
+        priceAction = `Raise price +$0.25 to $${recommendedPrice.toFixed(2)} for healthier profit`;
+      } else {
+        priceAction = `Great margin ($${avgUnitProfit.toFixed(2)} profit per item)`;
+      }
+
+      const projectedTotalRev = tomorrowPredictedUnits * recommendedPrice * durationDays;
+      const verdict =
+        seasonFit.status.startsWith('mismatch')
+          ? 'Swap Item!'
+          : totalTargetRevenue <= 0 || projectedTotalRev >= totalTargetRevenue * 0.9
+          ? 'On Track!'
+          : 'Stretch Goal';
+
+      return {
+        weatherObj,
+        dowObj,
+        seasonFit,
+        avgSellingPrice,
+        avgUnitCost,
+        avgUnitProfit,
+        recommendedPrice,
+        priceAction,
+        tomorrowPredictedUnits,
+        loggedDaysCount: loggedDays.length,
+        totalLoggedUnits,
+        avgDailyUnits,
+        realAvgDaySwing,
+        realDayVariances,
+        verdict
       };
     }
 
@@ -1428,9 +1387,6 @@
       const [cashTendered, setCashTendered] = useState('');
       const [posBanner, setPosBanner] = useState(null);
 
-      // Train ML Model Once
-      const mlEngine = useMemo(() => trainAndEvaluatePennyML(), []);
-
       // AI Chatbot State & Pending Product-Add Price Prompt State
       const [chatMessages, setChatMessages] = useState([]);
       const [isAiTyping, setIsAiTyping] = useState(false);
@@ -1752,233 +1708,30 @@
         return formattedPrice;
       };
 
-      // Real-Time Random Forest ML Inference + Product-Season Fit Analysis
-      const pennyAnalysis = useMemo(() => {
-        const catIdx = Math.max(0, CATEGORIES.findIndex((c) => c.id === category));
-        const catObj = CATEGORIES[catIdx];
-        const weatherIdx = Math.max(0, WEATHER_OPTIONS.findIndex((w) => w.id === forecastWeather));
-        const dowIdx = Math.max(0, DAY_OF_WEEK_OPTIONS.findIndex((d) => d.id === forecastDow));
-
-        const avgSellingPrice =
-          products.length > 0
-            ? products.reduce((sum, p) => sum + p.price, 0) / products.length
-            : 2.0;
-        const avgUnitCost =
-          products.length > 0
-            ? products.reduce((sum, p) => sum + p.unitCost, 0) / products.length
-            : catObj.avgUnitCost;
-
-        let bestPrice = avgSellingPrice;
-        let maxPredictedProfit = -Infinity;
-        let bestPredictedDailyUnits = 0;
-
-        for (let testPrice = 1.0; testPrice <= 12.0; testPrice += 0.5) {
-          const predUnits = mlEngine.predictDemand(
-            catIdx,
-            durationDays,
-            avgUnitCost,
-            testPrice,
-            weatherIdx,
-            dowIdx
-          );
-          const predTotalRev = predUnits * testPrice * durationDays;
-          const predNetProfit = predTotalRev - materialCost;
-          if (predNetProfit > maxPredictedProfit) {
-            maxPredictedProfit = predNetProfit;
-            bestPrice = testPrice;
-            bestPredictedDailyUnits = predUnits;
-          }
-        }
-
-        const currentPredDailyUnits = mlEngine.predictDemand(
-          catIdx,
-          durationDays,
-          avgUnitCost,
-          avgSellingPrice,
-          weatherIdx,
-          dowIdx
-        );
-        const currentPredTotalRevenue = currentPredDailyUnits * avgSellingPrice * durationDays;
-
-        const todayUnitsSold = salesLog
-          .filter((tx) => tx.day === activeDay)
-          .reduce((sum, tx) => sum + (tx.unitsCount || 1), 0);
-        const persistencePredUnits = todayUnitsSold > 0 ? todayUnitsSold : 10;
-
-        const seasonFit = analyzeProductSeasonFit(
+      // Real-Data Demand & Smart Pricing Analysis (Zero synthetic test stats)
+      const pennyAnalysis = useMemo(
+        () =>
+          evaluateRealShopDemand({
+            products,
+            salesLog,
+            activeDay,
+            liveWeatherReport,
+            forecastDow,
+            materialCost,
+            totalTargetRevenue,
+            durationDays
+          }),
+        [
           products,
-          liveWeatherReport.todayTemp,
-          liveWeatherReport.todayCondition
-        );
-
-        const goalRatio = totalTargetRevenue > 0 ? currentPredTotalRevenue / totalTargetRevenue : 1.2;
-        let verdict = 'High Potential!';
-        if (seasonFit.status.startsWith('mismatch')) {
-          verdict = 'Seasonal Swap!';
-        } else if (goalRatio >= 1.05) {
-          verdict = 'High Potential!';
-        } else if (goalRatio >= 0.72) {
-          verdict = 'Stretch Goal';
-        } else {
-          verdict = 'Tough Challenge';
-        }
-
-        const weatherObj = WEATHER_OPTIONS[weatherIdx];
-        const dowObj = DAY_OF_WEEK_OPTIONS[dowIdx];
-
-        const logDaysCount = new Set(salesLog.map((tx) => tx.day)).size;
-        const totalLoggedUnits = salesLog.reduce((sum, tx) => sum + (tx.unitsCount || 1), 0);
-        const avgLoggedDailyUnits = logDaysCount > 0 ? totalLoggedUnits / logDaysCount : null;
-        const adjustedLoggedUnits =
-          avgLoggedDailyUnits !== null
-            ? avgLoggedDailyUnits * weatherObj.demandMult * dowObj.demandMult
-            : null;
-
-        const tomorrowPredictedUnits =
-          adjustedLoggedUnits !== null
-            ? Math.max(1, Math.round(0.55 * currentPredDailyUnits + 0.45 * adjustedLoggedUnits))
-            : Math.max(1, Math.round(currentPredDailyUnits));
-
-        let recommendedPrice = bestPrice;
-        let priceAction = '';
-        if (seasonFit.priceDirection === 'avoid') {
-          recommendedPrice = avgSellingPrice;
-          priceAction = seasonFit.headline;
-        } else if (seasonFit.priceDirection === 'raise') {
-          recommendedPrice = Number((avgSellingPrice + 0.5).toFixed(2));
-          priceAction = `Raise price by +$0.50 to $${recommendedPrice.toFixed(2)} (${seasonFit.itemName} fits ${liveWeatherReport.todayTemp}°F!)`;
-        } else if (seasonFit.priceDirection === 'lower') {
-          recommendedPrice = Math.max(0.5, Number((avgSellingPrice - 0.25).toFixed(2)));
-          priceAction = `Lower price by -$0.25 to $${recommendedPrice.toFixed(2)} for rainy weather`;
-        } else {
-          const priceDiff = Number((bestPrice - avgSellingPrice).toFixed(2));
-          recommendedPrice =
-            Math.abs(priceDiff) < 0.15
-              ? avgSellingPrice
-              : Number((avgSellingPrice + (priceDiff > 0 ? 0.25 : -0.25)).toFixed(2));
-          priceAction =
-            recommendedPrice > avgSellingPrice + 0.05
-              ? `Raise price by +$${(recommendedPrice - avgSellingPrice).toFixed(2)}`
-              : recommendedPrice < avgSellingPrice - 0.05
-              ? `Lower price by -$${(avgSellingPrice - recommendedPrice).toFixed(2)}`
-              : 'Keep current price';
-        }
-
-        const currentDailyProfit = currentPredDailyUnits * (avgSellingPrice - avgUnitCost);
-        const recPredUnits = mlEngine.predictDemand(
-          catIdx,
-          durationDays,
-          avgUnitCost,
-          recommendedPrice,
-          weatherIdx,
-          dowIdx
-        );
-        const recDailyProfit = recPredUnits * (recommendedPrice - avgUnitCost);
-        const projectedProfitLift = Number(Math.max(0, recDailyProfit - currentDailyProfit).toFixed(2));
-
-        const explainabilityFactors = [
-          {
-            label: `Live Weather (${liveWeatherReport.locationLabel}: ${liveWeatherReport.todayTemp}°F)`,
-            impact: liveWeatherReport.isGoodToday
-              ? 'Good weather (+25%)'
-              : liveWeatherReport.isBadToday
-              ? 'Bad/cold weather (-35%)'
-              : 'Mild weather (0%)',
-            weightPct: 42
-          },
-          {
-            label: `Product & Season Fit (${seasonFit.itemName})`,
-            impact: seasonFit.status.startsWith('mismatch')
-              ? 'Seasonal mismatch'
-              : seasonFit.status === 'peak_match'
-              ? 'Peak seasonal fit'
-              : 'All-season fit',
-            weightPct: 33
-          },
-          {
-            label:
-              avgLoggedDailyUnits !== null
-                ? `Past Sales Logs (${totalLoggedUnits} units across ${logDaysCount}d)`
-                : 'Category Elasticity Curve',
-            impact:
-              avgLoggedDailyUnits !== null
-                ? `${avgLoggedDailyUnits.toFixed(1)} avg/day`
-                : `$${avgSellingPrice.toFixed(2)} unit price`,
-            weightPct: 25
-          }
-        ];
-
-        const failureCases = [
-          {
-            dayLabel: 'Past Test Day #14 (Sudden Thunderstorm)',
-            predicted: '19 units',
-            actual: '5 units',
-            error: '14 units off',
-            reason: 'Morning forecast said Sunny, but a 2 PM pop-up storm cleared the sidewalk.'
-          },
-          {
-            dayLabel: 'Past Test Day #29 (Street Fair Next Door)',
-            predicted: '11 units',
-            actual: '28 units',
-            error: '17 units off',
-            reason: 'Unscheduled neighborhood parade doubled foot traffic without weather changing.'
-          },
-          {
-            dayLabel: 'Past Test Day #41 (Sold Out Early)',
-            predicted: '16 units',
-            actual: '9 units',
-            error: '7 units off',
-            reason: 'Inventory ran out in 45 minutes—censoring true customer demand.'
-          }
-        ];
-
-        const tips = [
-          seasonFit.status.startsWith('mismatch')
-            ? `Seasonal Tip: ${seasonFit.headline} Try ${seasonFit.suggestedItems[0]?.name || 'a cozy treat'} instead!`
-            : `Bundle Boost: Keep it up, ${displayKidName}! Selling 2+ items together unlocks the Bundle Master badge!`,
-          `Live Weather (${liveWeatherReport.locationLabel}): ${liveWeatherReport.todayVerdict}`,
-          `Goal Sign Trick: Write "Saving $${financialGoal} for ${displayGoalItem}!" on a bright sign!`
-        ];
-
-        return {
-          catObj,
-          weatherObj,
-          dowObj,
-          seasonFit,
-          avgSellingPrice,
-          avgUnitCost,
-          bestPrice,
-          recommendedPrice,
-          priceAction,
-          projectedProfitLift,
-          bestPredictedDailyUnits: Math.round(bestPredictedDailyUnits),
-          currentPredDailyUnits,
-          tomorrowPredictedUnits,
-          logDaysCount,
-          totalLoggedUnits,
-          currentPredTotalRevenue,
-          persistencePredUnits,
-          explainabilityFactors,
-          failureCases,
-          verdict,
-          tips
-        };
-      }, [
-        category,
-        durationDays,
-        materialCost,
-        products,
-        totalTargetRevenue,
-        displayKidName,
-        financialGoal,
-        displayGoalItem,
-        mlEngine,
-        forecastWeather,
-        forecastDow,
-        salesLog,
-        activeDay,
-        liveWeatherReport
-      ]);
+          salesLog,
+          activeDay,
+          liveWeatherReport,
+          forecastDow,
+          materialCost,
+          totalTargetRevenue,
+          durationDays
+        ]
+      );
 
       const activeMascot = MASCOTS.find((m) => m.id === mascotId) || MASCOTS[0];
       const theme = THEMES[themeId] || THEMES.mint;
@@ -2852,7 +2605,6 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                   activeMascot={activeMascot}
                   businessName={displayShopName}
                   goalItemName={displayGoalItem}
-                  mlEngine={mlEngine}
                   pennyAnalysis={pennyAnalysis}
                   liveWeatherReport={liveWeatherReport}
                   forecastDow={forecastDow}
@@ -3015,10 +2767,13 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
       activeMascot,
       businessName,
       setBusinessName,
+      goalItemName,
       dailySalesTarget,
       breakEvenPoint,
+      totalRevenueEarned,
       netProfitEarned,
       products,
+      pennyAnalysis,
       liveWeatherReport,
       chatMessages,
       isAiTyping,
@@ -3028,11 +2783,6 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
     }) {
       const [isEditingShop, setIsEditingShop] = useState(false);
       const [quickChatInput, setQuickChatInput] = useState('');
-      const homeChatEndRef = useRef(null);
-
-      useEffect(() => {
-        homeChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, [chatMessages, isAiTyping]);
 
       return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -3073,6 +2823,13 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                 </button>
               </div>
 
+              <div className={`p-3 rounded-2xl border ${theme.innerCream} flex items-center justify-between text-xs`}>
+                <span className="font-bold">🌤️ {liveWeatherReport.locationLabel}</span>
+                <span className="font-black text-emerald-600">
+                  {liveWeatherReport.todayTemp}°F • {pennyAnalysis.verdict}
+                </span>
+              </div>
+
               <div className="grid grid-cols-3 gap-2.5 text-center">
                 <div className={`p-3 rounded-2xl border ${theme.innerCream}`}>
                   <div className="text-[10px] font-extrabold uppercase opacity-75">Break-Even</div>
@@ -3106,65 +2863,23 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
               </div>
             </div>
 
-            <div className={`${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-5 space-y-3.5`}>
-              <div className="flex items-center justify-between border-b border-black/10 pb-2.5">
-                <div className="flex items-center gap-2.5">
-                  <PixelMascot type={activeMascot.id} size={40} circular isTalking={isAiTyping} />
-                  <div>
-                    <h3 className="text-sm font-black leading-tight">{activeMascot.shortName} AI Coach</h3>
-                    <div className="text-[11px] font-bold text-emerald-500">● Online • Knows your full shop</div>
-                  </div>
+            <div className={`${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-6 space-y-4`}>
+              <div className={`p-4 rounded-2xl border ${theme.innerCream} text-center space-y-2`}>
+                <div className="flex justify-center">
+                  <PixelMascot type={activeMascot.id} size={56} isTalking={isAiTyping} />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onNavigate('coach')}
-                  className={`px-3 py-1 rounded-full border text-[11px] font-black cursor-pointer ${theme.pillBg}`}
-                >
-                  Expand ↗
-                </button>
-              </div>
-
-              <div className={`p-3 rounded-2xl border ${theme.innerCream} h-52 overflow-y-auto space-y-2.5`}>
-                <div className="flex items-start gap-2">
-                  <PixelMascot type={activeMascot.id} size={28} circular />
-                  <div className={`px-3 py-2 rounded-2xl rounded-tl-sm border text-xs leading-relaxed max-w-[85%] ${theme.card}`}>
-                    Hi {kidName}! I can see your whole shop ({products.length} items, ${netProfitEarned >= 0 ? `+$${netProfitEarned.toFixed(2)}` : `-$${Math.abs(netProfitEarned).toFixed(2)}`} profit). Ask me anything or say "add cookies"!
-                  </div>
-                </div>
-
-                {chatMessages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex items-start gap-2 ${
-                      msg.role === 'user' ? 'justify-end' : 'justify-start'
-                    }`}
-                  >
-                    {msg.role === 'ai' && <PixelMascot type={activeMascot.id} size={28} circular />}
-                    <div
-                      className={`px-3 py-2 rounded-2xl text-xs leading-relaxed max-w-[85%] whitespace-pre-line ${
-                        msg.role === 'user'
-                          ? `${theme.primaryBtn} rounded-tr-sm font-bold`
-                          : `${theme.card} border rounded-tl-sm`
-                      }`}
-                    >
-                      {msg.text}
-                    </div>
-                  </div>
-                ))}
-
-                {isAiTyping && (
-                  <div className="flex items-center gap-2 text-[11px] font-extrabold opacity-75">
-                    <PixelMascot type={activeMascot.id} size={24} circular isTalking />
-                    <span>{activeMascot.shortName} is typing...</span>
-                  </div>
-                )}
-                <div ref={homeChatEndRef} />
+                <h3 className="text-base font-black">{activeMascot.shortName} AI Business Assistant</h3>
+                <p className="text-xs leading-relaxed">
+                  {chatMessages.length > 0
+                    ? chatMessages[chatMessages.length - 1].text
+                    : `Hey ${kidName}! It's ${liveWeatherReport.todayTemp}°F in ${liveWeatherReport.locationLabel}—ask me what to sell today or tell me to add a product!`}
+                </p>
               </div>
 
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (!quickChatInput.trim() || isAiTyping) return;
+                  if (!quickChatInput.trim()) return;
                   onSendChat(quickChatInput);
                   setQuickChatInput('');
                 }}
@@ -3175,14 +2890,14 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                   value={quickChatInput}
                   onChange={(e) => setQuickChatInput(e.target.value)}
                   placeholder={`Ask ${activeMascot.shortName} anything...`}
-                  className={`flex-1 px-4 py-2.5 rounded-full border-2 text-xs font-bold outline-none ${theme.inputBg}`}
+                  className={`flex-1 px-3.5 py-2.5 rounded-full border-2 text-xs font-bold outline-none ${theme.inputBg}`}
                 />
                 <button
                   type="submit"
                   disabled={isAiTyping || !quickChatInput.trim()}
                   className={`px-4 py-2.5 rounded-full border-2 font-black text-xs cursor-pointer ${theme.primaryBtn}`}
                 >
-                  Send
+                  Ask
                 </button>
               </form>
             </div>
@@ -3192,7 +2907,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-xl font-black">Inventory</h2>
               <span className={`px-4 py-1.5 rounded-full border text-xs font-black ${theme.innerCream}`}>
-                📍 {liveWeatherReport.locationLabel}: {liveWeatherReport.todayTemp}°F
+                Total Earned: ${totalRevenueEarned.toFixed(2)}
               </span>
             </div>
 
@@ -3433,7 +3148,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
             </div>
 
             <div className={`lg:col-span-7 ${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-6 space-y-4`}>
-              <h2 className="text-lg font-black">2. Product Menu & Cartoon Stickers</h2>
+              <h2 className="text-lg font-black">2. Product Menu & AI Cartoon Stickers</h2>
 
               <form onSubmit={handleAddProduct} className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
                 <input
@@ -3441,7 +3156,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                   disabled={isGeneratingImg}
                   value={newItemName}
                   onChange={(e) => setNewItemName(censorKidSafeText(e.target.value))}
-                  placeholder="Item name (e.g. Lemonade, Slime)"
+                  placeholder="Item name (e.g. Lemonade, Hot Cocoa)"
                   className={`sm:col-span-5 px-3.5 py-2.5 rounded-2xl border-2 text-sm font-bold ${theme.inputBg}`}
                 />
                 <input
@@ -3480,7 +3195,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                   <div className="text-3xl">🎨</div>
                   <div className="font-black text-sm">Your Menu is Empty</div>
                   <p className={`text-xs ${theme.mutedText}`}>
-                    Type an item name and price above—a cute cartoon sticker is drawn automatically!
+                    Type an item name and price above—AI will automatically draw a cartoon sticker for it!
                   </p>
                 </div>
               ) : (
@@ -3553,14 +3268,13 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
     }
 
     // ============================================================================
-    // MODULE 2: AI COACH & LIVE WEATHER / SEASONAL ML FORECASTER
+    // MODULE 2: AI COACH & SIMPLE REAL-DATA FORECASTER
     // ============================================================================
     function PennyCoachPage({
       theme,
       activeMascot,
       businessName,
       goalItemName,
-      mlEngine,
       pennyAnalysis,
       liveWeatherReport,
       forecastDow,
@@ -3575,8 +3289,8 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
       onBackHome
     }) {
       const [inputText, setInputText] = useState('');
-      const [mlSubTab, setMlSubTab] = useState('forecast');
       const [addedSuggestionMsg, setAddedSuggestionMsg] = useState('');
+      const [showDetails, setShowDetails] = useState(false);
       const coachChatEndRef = useRef(null);
 
       useEffect(() => {
@@ -3586,7 +3300,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
       const quickPrompts = [
         `How are my sales & profit looking?`,
         `Add Chocolate Chip Cookies to my inventory`,
-        `What price should I charge right now?`,
+        `What should I sell today?`,
         `Give me a catchy sign idea for ${goalItemName}`
       ];
 
@@ -3609,7 +3323,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                 <span>Back to Home Hub</span>
               </button>
               <h1 className="text-2xl sm:text-3xl font-black">
-                {activeMascot.shortName} — AI Coach & ML Forecaster
+                {activeMascot.shortName} — AI Coach & Weather Forecast
               </h1>
             </div>
 
@@ -3624,7 +3338,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
             <div
-              className={`lg:col-span-7 ${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-5 sm:p-6 flex flex-col space-y-4 min-h-[600px]`}
+              className={`lg:col-span-7 ${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-5 sm:p-6 flex flex-col space-y-4 min-h-[560px]`}
             >
               <div className="flex items-center justify-between border-b border-black/10 pb-3 shrink-0">
                 <div className="flex items-center gap-3">
@@ -3641,11 +3355,11 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                 </div>
               </div>
 
-              <div className={`p-4 rounded-2xl border ${theme.innerCream} flex-1 min-h-[360px] max-h-[540px] overflow-y-auto space-y-3`}>
+              <div className={`p-4 rounded-2xl border ${theme.innerCream} flex-1 min-h-[340px] max-h-[520px] overflow-y-auto space-y-3`}>
                 <div className="flex items-start gap-2.5">
                   <PixelMascot type={activeMascot.id} size={34} circular />
                   <div className={`p-3.5 rounded-2xl rounded-tl-sm border text-xs sm:text-sm leading-relaxed max-w-[85%] ${theme.card}`}>
-                    Hey there! I have a full view of {businessName}—your menu, sales logs, profit jars, badges, and forecasts. Ask me anything or tell me to add a product!
+                    Hey there! I see your menu, real sales logs, and live weather in {liveWeatherReport.locationLabel}. Ask me anything or tell me to add a product!
                   </div>
                 </div>
 
@@ -3711,254 +3425,172 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
               </div>
             </div>
 
-            <div className="lg:col-span-5 space-y-5">
+            {/* Clean, Simple Right-Side Forecast Card with 100% Real Data */}
+            <div className="lg:col-span-5">
               <div className={`${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-5 space-y-4`}>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="text-base font-black">ML Demand & Price Engine</h2>
-                  <div className="flex items-center gap-1 bg-black/5 p-1 rounded-full">
-                    <button
-                      type="button"
-                      onClick={() => setMlSubTab('forecast')}
-                      className={`px-3 py-1 rounded-full text-[11px] font-black cursor-pointer transition-all ${
-                        mlSubTab === 'forecast' ? theme.primaryBtn : 'opacity-75 hover:opacity-100'
-                      }`}
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-lg font-black">Shop Forecast & Tips</h2>
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-black ${
+                      liveWeatherReport.isGoodToday
+                        ? 'bg-emerald-500 text-slate-950'
+                        : liveWeatherReport.isBadToday
+                        ? 'bg-rose-400 text-slate-950'
+                        : 'bg-amber-300 text-slate-950'
+                    }`}
+                  >
+                    {liveWeatherReport.todayTemp}°F • {liveWeatherReport.locationLabel}
+                  </span>
+                </div>
+
+                {/* 1. Simple Tomorrow Estimate */}
+                <div className={`p-4 rounded-2xl border ${theme.innerCream} space-y-3`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs font-black uppercase opacity-70">Tomorrow’s Estimate</div>
+                      <div className="text-3xl font-black mt-0.5">
+                        ~{pennyAnalysis.tomorrowPredictedUnits} sales
+                      </div>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full border text-xs font-black ${theme.accentBadge}`}>
+                      {pennyAnalysis.verdict}
+                    </span>
+                  </div>
+
+                  <p className={`text-xs ${theme.mutedText}`}>
+                    {pennyAnalysis.loggedDaysCount > 0
+                      ? `Based on your real average of ${pennyAnalysis.avgDailyUnits} sales/day across ${pennyAnalysis.loggedDaysCount} day(s) + ${liveWeatherReport.tomorrowTemp}°F weather.`
+                      : `No sales logged yet—estimating from ${liveWeatherReport.tomorrowTemp}°F weather & your $${pennyAnalysis.avgSellingPrice.toFixed(2)} menu price.`}
+                  </p>
+
+                  <div>
+                    <label className="block text-[11px] font-extrabold opacity-75 mb-1">
+                      Selling Day
+                    </label>
+                    <select
+                      value={forecastDow}
+                      onChange={(e) => setForecastDow(e.target.value)}
+                      className={`w-full px-3 py-2 rounded-xl border-2 text-xs font-black ${theme.inputBg}`}
                     >
-                      📈 Forecast & MAE
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMlSubTab('explainability')}
-                      className={`px-3 py-1 rounded-full text-[11px] font-black cursor-pointer transition-all ${
-                        mlSubTab === 'explainability' ? theme.secondaryBtn : 'opacity-75 hover:opacity-100'
-                      }`}
-                    >
-                      🔍 AI Confidence & Limitations
-                    </button>
+                      {DAY_OF_WEEK_OPTIONS.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
-                {mlSubTab === 'forecast' ? (
-                  <div className="space-y-4">
-                    {/* Live External Weather Feed + Day of Week */}
-                    <div className={`p-3.5 rounded-2xl border ${theme.innerCream} space-y-2`}>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-black uppercase text-emerald-600">
-                          🌍 Live Weather ({liveWeatherReport.locationLabel})
-                        </span>
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${
-                            liveWeatherReport.isGoodToday
-                              ? 'bg-emerald-500 text-slate-950'
-                              : liveWeatherReport.isBadToday
-                              ? 'bg-rose-400 text-slate-950'
-                              : 'bg-amber-300 text-slate-950'
-                          }`}
-                        >
-                          {liveWeatherReport.isGoodToday
-                            ? '☀️ Good Selling Weather'
-                            : liveWeatherReport.isBadToday
-                            ? '🌧️ Bad Weather Today'
-                            : '⛅ Mild Weather'}
-                        </span>
-                      </div>
-                      <div className="text-xs font-bold">{liveWeatherReport.todayVerdict}</div>
-                      <div className="pt-1">
-                        <label className="block text-[10px] font-extrabold uppercase opacity-75 mb-1">
-                          Tomorrow’s Selling Day
-                        </label>
-                        <select
-                          value={forecastDow}
-                          onChange={(e) => setForecastDow(e.target.value)}
-                          className={`w-full px-3 py-1.5 rounded-xl border-2 text-xs font-black ${theme.inputBg}`}
-                        >
-                          {DAY_OF_WEEK_OPTIONS.map((d) => (
-                            <option key={d.id} value={d.id}>
-                              {d.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* 1. Tomorrow's Sales Prediction */}
-                    <div className={`p-4 rounded-2xl border-2 border-sky-400/50 ${theme.innerCream} flex items-center justify-between gap-3`}>
-                      <div>
-                        <div className="text-[11px] font-black uppercase text-sky-600">
-                          Tomorrow’s Sales Prediction
-                        </div>
-                        <div className="text-3xl font-black mt-0.5">
-                          {pennyAnalysis.tomorrowPredictedUnits} units
-                        </div>
-                        <div className={`text-[11px] mt-0.5 ${theme.mutedText}`}>
-                          {pennyAnalysis.logDaysCount > 0
-                            ? `Blended from ${pennyAnalysis.totalLoggedUnits} logged units + ${liveWeatherReport.tomorrowTemp}°F forecast`
-                            : `Forecasted from ${liveWeatherReport.tomorrowTemp}°F & ${pennyAnalysis.dowObj.label}`}
-                        </div>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full border text-xs font-black ${theme.accentBadge}`}>
-                        {pennyAnalysis.verdict}
-                      </span>
-                    </div>
-
-                    {/* 2. Smart Pricing & Item-Season Check + Replacement Ideas */}
-                    <div
-                      className={`p-4 rounded-2xl border-2 ${
-                        pennyAnalysis.seasonFit.status.startsWith('mismatch')
-                          ? 'border-rose-400'
-                          : 'border-emerald-400/60'
-                      } ${theme.innerCream} space-y-2.5`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-black uppercase text-emerald-600">
-                          💡 Smart Pricing & Product-Season Fit
-                        </span>
-                        {pennyAnalysis.seasonFit.priceDirection !== 'avoid' && (
-                          <span className="text-xs font-black text-emerald-600">
-                            Target: ${pennyAnalysis.recommendedPrice.toFixed(2)}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm font-black">{pennyAnalysis.priceAction}</div>
-                      <p className={`text-[11px] leading-relaxed ${theme.mutedText}`}>
-                        {pennyAnalysis.seasonFit.explanation}
-                      </p>
-
-                      {pennyAnalysis.seasonFit.suggestedItems.length > 0 && (
-                        <div className="space-y-1.5 pt-1">
-                          <div className="text-[10px] font-black uppercase text-rose-500">
-                            ✨ Sell These Instead for {liveWeatherReport.todayTemp}°F Weather:
-                          </div>
-                          {pennyAnalysis.seasonFit.suggestedItems.map((sug) => (
-                            <div
-                              key={sug.name}
-                              className={`p-2 rounded-xl border flex items-center justify-between gap-2 text-xs ${theme.card}`}
-                            >
-                              <div>
-                                <div className="font-black">
-                                  {sug.name} (${sug.price.toFixed(2)})
-                                </div>
-                                <div className={`text-[10px] ${theme.mutedText}`}>{sug.reason}</div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  await onAddSuggestedItem(sug);
-                                  setAddedSuggestionMsg(`Added ${sug.name} with cartoon sticker!`);
-                                  setTimeout(() => setAddedSuggestionMsg(''), 2800);
-                                }}
-                                className={`px-2.5 py-1.5 rounded-full border font-black text-[10px] whitespace-nowrap cursor-pointer ${theme.primaryBtn}`}
-                              >
-                                + Add to Menu
-                              </button>
-                            </div>
-                          ))}
-                          {addedSuggestionMsg && (
-                            <div className="text-[11px] font-black text-emerald-600">
-                              ✅ {addedSuggestionMsg}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {pennyAnalysis.seasonFit.priceDirection !== 'avoid' && (
-                        <button
-                          type="button"
-                          onClick={onApplyOptimalPrice}
-                          className={`w-full py-2 rounded-full border-2 font-black text-xs cursor-pointer ${theme.primaryBtn}`}
-                        >
-                          Apply ${pennyAnalysis.recommendedPrice.toFixed(2)} to Menu →
-                        </button>
-                      )}
-                    </div>
-
-                    {/* 3. Baseline Comparison Widget (Mean Absolute Error) */}
-                    <div className="space-y-2.5 pt-1">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-black uppercase tracking-wide">
-                          Baseline Comparison Widget ({mlEngine.testCount}-Day Test)
-                        </h3>
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-500 text-slate-950 text-[10px] font-black">
-                          -{mlEngine.maeImprovementPct}% Lower Error
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2.5 text-xs">
-                        <div className={`p-3 rounded-2xl border-2 border-emerald-500 ${theme.innerCream}`}>
-                          <div className="font-black text-emerald-600">🌲 Random Forest ML</div>
-                          <div className="text-lg font-black mt-0.5">MAE: {mlEngine.rfMAE} units</div>
-                          <div className="w-full h-2 bg-black/10 rounded-full mt-1.5 overflow-hidden">
-                            <div
-                              className="h-full bg-emerald-500 rounded-full"
-                              style={{ width: `${Math.min(100, Math.round((mlEngine.rfMAE / mlEngine.baseMAE) * 100))}%` }}
-                            />
-                          </div>
-                          <div className={`text-[10px] mt-1 ${theme.mutedText}`}>
-                            Uses live weather + season + logs
-                          </div>
-                        </div>
-
-                        <div className={`p-3 rounded-2xl border ${theme.innerCream}`}>
-                          <div className="font-black opacity-85">📏 Persistence Baseline</div>
-                          <div className="text-lg font-black mt-0.5">MAE: {mlEngine.baseMAE} units</div>
-                          <div className="w-full h-2 bg-black/10 rounded-full mt-1.5 overflow-hidden">
-                            <div className="h-full bg-amber-500 rounded-full w-full" />
-                          </div>
-                          <div className={`text-[10px] mt-1 ${theme.mutedText}`}>
-                            Assumes tomorrow = today ({pennyAnalysis.persistencePredUnits}u)
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                {/* 2. Weather & Menu Advice */}
+                <div
+                  className={`p-4 rounded-2xl border-2 ${
+                    pennyAnalysis.seasonFit.status.startsWith('mismatch')
+                      ? 'border-rose-400'
+                      : 'border-emerald-400/60'
+                  } ${theme.innerCream} space-y-2.5`}
+                >
+                  <div className="text-xs font-black uppercase text-emerald-600">
+                    💡 Weather & Menu Tip
                   </div>
-                ) : (
-                  /* 4. AI Confidence & Limitations Tab */
-                  <div className="space-y-4">
-                    <div className={`p-3.5 rounded-2xl border ${theme.innerCream} space-y-2.5`}>
-                      <div className="text-xs font-black text-sky-600 uppercase">
-                        🧠 Why the Model Predicted {pennyAnalysis.tomorrowPredictedUnits} Units
-                      </div>
-                      <div className="space-y-2">
-                        {pennyAnalysis.explainabilityFactors.map((f) => (
-                          <div key={f.label} className="space-y-1 text-xs">
-                            <div className="flex items-center justify-between font-bold">
-                              <span>{f.label}</span>
-                              <span className="font-black text-emerald-600">{f.impact}</span>
-                            </div>
-                            <div className="w-full h-2 bg-black/10 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-sky-500 rounded-full"
-                                style={{ width: `${f.weightPct}%` }}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                  <div className="text-sm font-black">{pennyAnalysis.priceAction}</div>
+                  <p className={`text-xs leading-relaxed ${theme.mutedText}`}>
+                    {pennyAnalysis.seasonFit.explanation}
+                  </p>
 
-                    <div className={`p-3.5 rounded-2xl border ${theme.innerCream} space-y-2.5`}>
-                      <div className="text-xs font-black text-amber-600 uppercase">
-                        ⚠️ Past Anomaly & Forecast Failure Log
+                  {pennyAnalysis.seasonFit.suggestedItems.length > 0 && (
+                    <div className="space-y-1.5 pt-1">
+                      <div className="text-[11px] font-black text-rose-500">
+                        Better fits for {liveWeatherReport.todayTemp}°F weather:
                       </div>
-                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                        {pennyAnalysis.failureCases.map((fc) => (
-                          <div
-                            key={fc.dayLabel}
-                            className={`p-2.5 rounded-xl border text-xs space-y-1 ${theme.card}`}
+                      {pennyAnalysis.seasonFit.suggestedItems.map((sug) => (
+                        <div
+                          key={sug.name}
+                          className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 text-xs ${theme.card}`}
+                        >
+                          <div>
+                            <div className="font-black">
+                              {sug.name} (${sug.price.toFixed(2)})
+                            </div>
+                            <div className={`text-[11px] ${theme.mutedText}`}>{sug.reason}</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await onAddSuggestedItem(sug);
+                              setAddedSuggestionMsg(`Added ${sug.name}!`);
+                              setTimeout(() => setAddedSuggestionMsg(''), 2500);
+                            }}
+                            className={`px-3 py-1.5 rounded-full border font-black text-[11px] whitespace-nowrap cursor-pointer ${theme.primaryBtn}`}
                           >
-                            <div className="flex items-center justify-between font-black">
-                              <span>{fc.dayLabel}</span>
-                              <span className="text-rose-500">{fc.error}</span>
-                            </div>
-                            <div className="text-[11px] font-bold">
-                              Predicted {fc.predicted} vs. Actual {fc.actual}
-                            </div>
-                            <p className={`text-[11px] leading-snug ${theme.mutedText}`}>{fc.reason}</p>
-                          </div>
-                        ))}
-                      </div>
+                            + Add
+                          </button>
+                        </div>
+                      ))}
+                      {addedSuggestionMsg && (
+                        <div className="text-xs font-black text-emerald-600">✅ {addedSuggestionMsg}</div>
+                      )}
                     </div>
-                  </div>
-                )}
+                  )}
+
+                  {pennyAnalysis.seasonFit.priceDirection !== 'avoid' &&
+                    pennyAnalysis.recommendedPrice !== pennyAnalysis.avgSellingPrice && (
+                      <button
+                        type="button"
+                        onClick={onApplyOptimalPrice}
+                        className={`w-full py-2.5 rounded-full border-2 font-black text-xs cursor-pointer ${theme.primaryBtn}`}
+                      >
+                        Update Price to ${pennyAnalysis.recommendedPrice.toFixed(2)} →
+                      </button>
+                    )}
+                </div>
+
+                {/* 3. Real Shop Stats & Expandable Limitations */}
+                <div className={`p-3.5 rounded-2xl border ${theme.innerCream} space-y-2`}>
+                  <button
+                    type="button"
+                    onClick={() => setShowDetails(!showDetails)}
+                    className="w-full flex items-center justify-between text-xs font-black cursor-pointer"
+                  >
+                    <span>📊 Your Real Shop Stats & Forecast Notes</span>
+                    <span>{showDetails ? '▲' : '▼'}</span>
+                  </button>
+
+                  {showDetails && (
+                    <div className="pt-2 border-t border-black/10 space-y-2.5 text-xs">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className={`p-2.5 rounded-xl border ${theme.card}`}>
+                          <div className="text-[10px] font-bold opacity-75">Real Sales Logged</div>
+                          <div className="font-black text-sm mt-0.5">
+                            {pennyAnalysis.totalLoggedUnits} items ({pennyAnalysis.loggedDaysCount}d)
+                          </div>
+                        </div>
+                        <div className={`p-2.5 rounded-xl border ${theme.card}`}>
+                          <div className="text-[10px] font-bold opacity-75">Avg Profit / Item</div>
+                          <div className="font-black text-sm text-emerald-600 mt-0.5">
+                            ${pennyAnalysis.avgUnitProfit.toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+
+                      {pennyAnalysis.realDayVariances.length > 0 ? (
+                        <div className="space-y-1.5">
+                          <div className="text-[11px] font-black">
+                            Real Day-to-Day Changes (Avg Swing: {pennyAnalysis.realAvgDaySwing} units):
+                          </div>
+                          {pennyAnalysis.realDayVariances.map((v) => (
+                            <div key={v.dayLabel} className={`p-2 rounded-xl border text-[11px] ${theme.card}`}>
+                              <strong>{v.dayLabel}:</strong> {v.reason}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className={`text-[11px] leading-relaxed ${theme.mutedText}`}>
+                          Log sales across 2 or more days in the Cash Register to see your real day-to-day accuracy and sales swings here. Weather and sudden local events can always change foot traffic!
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
