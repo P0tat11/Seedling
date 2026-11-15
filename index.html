@@ -2667,12 +2667,6 @@ Live Shop Data:
                 setShowShiftWrapUp(false);
                 setActiveTab('home');
               }}
-              onStartNextDay={() => {
-                setActiveDay((d) => Math.min(durationDays, d + 1));
-                setShopOpen(true);
-                setShowShiftWrapUp(false);
-                setActiveTab('pos');
-              }}
             />
           )}
 
@@ -4341,8 +4335,7 @@ Live Shop Data:
       shopInsights,
       jarAllocations,
       setJarAllocations,
-      onClose,
-      onStartNextDay
+      onClose
     }) {
       const todaySales = salesLog.filter((tx) => tx.day === activeDay);
       const todayRevenue = Number(todaySales.reduce((s, t) => s + t.total, 0).toFixed(2));
@@ -4536,13 +4529,6 @@ Live Shop Data:
                 className={`w-full sm:w-auto px-5 py-2.5 rounded-full border font-extrabold text-xs cursor-pointer ${theme.pillBg}`}
               >
                 Save & Close
-              </button>
-              <button
-                type="button"
-                onClick={onStartNextDay}
-                className={`w-full sm:w-auto px-6 py-2.5 rounded-full border-2 font-black text-xs cursor-pointer ${theme.primaryBtn}`}
-              >
-                Start Next Selling Day →
               </button>
             </div>
           </div>
