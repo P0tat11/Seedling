@@ -779,6 +779,95 @@
       }
     }
 
+    const TUTORIAL_CHAPTERS = [
+      {
+        icon: '👋',
+        title: 'Welcome to your shop',
+        summary: 'Set up the people and personality behind your business.',
+        bullets: [
+          'Add the founder name and choose an age group during setup.',
+          'A parent or guardian needs to know about the shop. Add their contact information and create a shop password.',
+          'Choose a veggie buddy and theme. You can rename your AI buddy later from the AI Coach.'
+        ]
+      },
+      {
+        icon: '🏡',
+        title: 'Your Home Hub',
+        tab: 'home',
+        summary: 'Home is the starting point for your day and a quick snapshot of your business.',
+        bullets: [
+          'See your inventory, money earned, goal progress, break-even amount, daily pace, and net profit.',
+          'Use Open Shop to jump to the register, or Full Progress Chart to review your results.',
+          'Ask the coach a quick question from Home or the floating corner buddy, or use Close Shop & Split Jars to wrap up the day.'
+        ]
+      },
+      {
+        icon: '🎯',
+        title: 'Set goals and build your menu',
+        tab: 'setup',
+        summary: 'Goal & Menu turns your idea into a plan and a list of items to sell.',
+        bullets: [
+          'Enter your business category, what you are saving for, your profit goal, number of days, and supply costs.',
+          'The math cards estimate break-even, the total target, and how much to earn each day.',
+          'Add products with a name, selling price, and unit cost. Seedling may create a product picture; edit or remove items in your menu.'
+        ]
+      },
+      {
+        icon: '🌱',
+        title: 'Get help from the AI Coach',
+        tab: 'coach',
+        summary: 'Ask for friendly ideas to help plan and run your shop.',
+        bullets: [
+          'Ask questions or try the suggested prompts for weather, new menu ideas, sign ideas, and the Bundle Master badge.',
+          'See the weather and choose a forecast for planning. The coach also uses your shop goals and sales insights to offer suggestions.',
+          'Rename your assistant here. Ollama Config is optional for connecting to an Ollama model running on your own computer.'
+        ]
+      },
+      {
+        icon: '🧾',
+        title: 'Ring up a customer',
+        tab: 'pos',
+        summary: 'The Register adds items to a receipt and records a sale at checkout.',
+        bullets: [
+          'Tap a product or enter its three-digit code with the barcode keypad. Use Quick-Add Item to create and ring up a new item.',
+          'Change item quantities, add an optional tip, and enter cash received to calculate change.',
+          'Choose Checkout to record the sale. Two different products or three or more total units unlock the Bundle Master badge; sales also earn Tycoon Gems.'
+        ]
+      },
+      {
+        icon: '📈',
+        title: 'Follow your progress',
+        tab: 'dashboard',
+        summary: 'The Tycoon Board brings your sales, goals, and daily pace together.',
+        bullets: [
+          'Review total collected, supply break-even, net profit, and your savings goal.',
+          'The chart compares actual earnings with the target pace; use Active Day to view a day in your plan.',
+          'Recent Sales Log shows recorded transactions. Simulate 1 Quick Sale is a demo tool for trying the dashboard, not a customer checkout.'
+        ]
+      },
+      {
+        icon: '🌙',
+        title: 'Close the shop and split profits',
+        tab: 'dashboard',
+        summary: 'At the end of a selling day, review the shift and decide where profit should go.',
+        bullets: [
+          'Choose Close Shop for Today or Close Shop & Split Profit Jars to see a shift wrap-up.',
+          'Adjust the Goal, Supplies, and Charity jar percentages to plan how to divide profit.',
+          'Start the next day when you are ready; you can reopen the shop later.'
+        ]
+      },
+      {
+        icon: '✨',
+        title: 'Personalize and manage your shops',
+        summary: 'A few useful controls live in the header and profile area.',
+        bullets: [
+          'Use + New Shop and the shop selector to keep separate business plans. Profile / Edit lets you revisit setup.',
+          'Mute or unmute sounds. Lock shows a password screen if you created a shop password.',
+          'Your shop is saved in this browser automatically. Reset clears saved shop data, so use it only when you really want to start over. Seedling is a prototype, not financial advice.'
+        ]
+      }
+    ];
+
     // ============================================================================
     // ONBOARDING WIZARD (CUSTOM SHOP CATEGORY TEXT INPUT + ASSISTANT NAME)
     // ============================================================================
@@ -1139,17 +1228,22 @@
 
             {step === 6 && (
               <div className="space-y-4">
-                <h2 className="text-2xl font-black">🚀 Quick 3-Step Shop Tour</h2>
-                <div className="space-y-2.5 text-xs sm:text-sm">
-                  <div className={`p-3.5 rounded-2xl border ${theme.innerCream}`}>
-                    <strong>1. Add Your Products:</strong> Type any item name and price—Seedling creates a realistic studio sticker automatically!
-                  </div>
-                  <div className={`p-3.5 rounded-2xl border ${theme.innerCream}`}>
-                    <strong>2. Scan & Sell:</strong> Tap items or type barcodes on the Cash Register, add tips, and unlock the Bundle Master badge!
-                  </div>
-                  <div className={`p-3.5 rounded-2xl border ${theme.innerCream}`}>
-                    <strong>3. Close Shop & Split Jars:</strong> Wrap up each day with your AI Coach and split profits into Goal, Supplies, and Charity jars!
-                  </div>
+                <div>
+                  <h2 className="text-2xl font-black">🚀 Your Complete Seedling Tutorial</h2>
+                  <p className={`text-xs sm:text-sm mt-1 ${theme.mutedText}`}>
+                    Here is how every part of your shop works. You can reopen this guide anytime with the Tutorial button.
+                  </p>
+                </div>
+                <div className="max-h-[48vh] overflow-y-auto seedling-scroll space-y-3 pr-1">
+                  {TUTORIAL_CHAPTERS.map((chapter, index) => (
+                    <section key={chapter.title} className={`p-3.5 rounded-2xl border ${theme.innerCream}`}>
+                      <h3 className="font-black text-sm">{index + 1}. {chapter.icon} {chapter.title}</h3>
+                      <p className="text-xs mt-1">{chapter.summary}</p>
+                      <ul className="mt-2 space-y-1.5 text-xs list-disc pl-5">
+                        {chapter.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}
+                      </ul>
+                    </section>
+                  ))}
                 </div>
               </div>
             )}
@@ -1274,6 +1368,111 @@
       );
     }
 
+    function TutorialModal({ theme, onClose, onNavigate }) {
+      const [chapterIndex, setChapterIndex] = useState(0);
+      const chapter = TUTORIAL_CHAPTERS[chapterIndex];
+
+      useEffect(() => {
+        const handleKeyDown = (event) => {
+          if (event.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+      }, [onClose]);
+
+      return (
+        <div
+          className="fixed inset-0 z-[60] bg-slate-950/60 p-3 sm:p-6 flex items-center justify-center"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) onClose();
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tutorial-title"
+            className={`w-full max-w-3xl max-h-[92vh] overflow-y-auto seedling-scroll ${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-5 sm:p-7`}
+          >
+            <header className="flex items-start justify-between gap-4">
+              <div>
+                <div className={`text-xs font-black uppercase tracking-wide ${theme.mutedText}`}>
+                  Seedling tutorial · {chapterIndex + 1} of {TUTORIAL_CHAPTERS.length}
+                </div>
+                <h2 id="tutorial-title" className="text-2xl sm:text-3xl font-black mt-1">
+                  {chapter.icon} {chapter.title}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close tutorial"
+                className={`shrink-0 p-2 rounded-full border font-black cursor-pointer ${theme.pillBg}`}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </header>
+
+            <div className="mt-4 flex gap-1.5 overflow-x-auto pb-2" aria-label="Tutorial chapters">
+              {TUTORIAL_CHAPTERS.map((item, index) => (
+                <button
+                  key={item.title}
+                  type="button"
+                  onClick={() => setChapterIndex(index)}
+                  aria-label={`Go to chapter ${index + 1}: ${item.title}`}
+                  aria-current={index === chapterIndex ? 'step' : undefined}
+                  className={`shrink-0 px-3 py-1.5 rounded-full border text-xs font-black cursor-pointer ${
+                    index === chapterIndex ? theme.primaryBtn : theme.pillBg
+                  }`}
+                >
+                  {index + 1}. {item.icon}
+                </button>
+              ))}
+            </div>
+
+            <div className={`mt-3 p-4 sm:p-5 rounded-2xl border ${theme.innerCream}`}>
+              <p className="font-bold text-sm sm:text-base">{chapter.summary}</p>
+              <ul className="mt-4 space-y-3 text-sm list-disc pl-5">
+                {chapter.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}
+              </ul>
+              {chapter.tab && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onNavigate(chapter.tab);
+                    onClose();
+                  }}
+                  className={`mt-5 px-4 py-2.5 rounded-full border-2 text-xs font-black cursor-pointer ${theme.primaryBtn}`}
+                >
+                  Open {chapter.tab === 'pos' ? 'Register' : chapter.tab === 'dashboard' ? 'Tycoon Board' : chapter.tab === 'setup' ? 'Goal & Menu' : chapter.tab === 'coach' ? 'AI Coach' : 'Home'} →
+                </button>
+              )}
+            </div>
+
+            <footer className="mt-4 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setChapterIndex((current) => Math.max(0, current - 1))}
+                disabled={chapterIndex === 0}
+                className={`px-4 py-2.5 rounded-full border text-xs font-black cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${theme.pillBg}`}
+              >
+                ← Previous
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (chapterIndex === TUTORIAL_CHAPTERS.length - 1) onClose();
+                  else setChapterIndex((current) => current + 1);
+                }}
+                className={`px-5 py-2.5 rounded-full border-2 text-xs font-black cursor-pointer ${theme.primaryBtn}`}
+              >
+                {chapterIndex === TUTORIAL_CHAPTERS.length - 1 ? 'Finish Tutorial ✓' : 'Next Chapter →'}
+              </button>
+            </footer>
+          </section>
+        </div>
+      );
+    }
+
     // ============================================================================
     // MAIN APPLICATION COMPONENT
     // ============================================================================
@@ -1296,6 +1495,7 @@
       const [soundMuted, setSoundMuted] = useState(saved?.soundMuted ?? false);
       const [shopOpen, setShopOpen] = useState(saved?.shopOpen ?? true);
       const [saveBadgeText, setSaveBadgeText] = useState('Saved ✓');
+      const [showTutorial, setShowTutorial] = useState(false);
 
       // Founder & Account Security State
       const [kidName, setKidName] = useState(saved?.kidName ?? '');
@@ -1673,7 +1873,7 @@
             : `Keep menu around $${avgSellingPrice.toFixed(2)}`;
 
         const tips = [
-          `Bundle Boost: Keep it up, ${displayKidName}! Selling 2+ items together unlocks the Bundle Master badge and raises your average order!`,
+          `Bundle Boost: Keep it up, ${displayKidName}! Selling 2 different products or 3+ total units unlocks the Bundle Master badge!`,
           avgLoggedUnitsPerDay !== null
             ? `Real Pace Check: You've averaged ${avgLoggedUnitsPerDay} units/day across ${activeSellingDays} selling day(s) ($${totalRevenueEarned.toFixed(2)} earned so far).`
             : `Goal Pace: At ~$${avgSellingPrice.toFixed(2)} per item, selling ${unitsNeededPerDayForGoal} item(s)/day hits your $${dailySalesTarget.toFixed(2)} daily target!`,
@@ -2100,6 +2300,13 @@ Live Shop Data:
 
               {/* Right Utility Actions */}
               <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowTutorial(true)}
+                  className={`px-3.5 py-1.5 rounded-full border-2 text-xs font-black cursor-pointer ${theme.pillBg}`}
+                >
+                  📖 Tutorial
+                </button>
                 {shopsList.length > 1 && (
                   <select
                     value={activeShopId}
@@ -2443,6 +2650,14 @@ Live Shop Data:
                 setShopOpen(true);
                 setShowShiftWrapUp(false);
               }}
+            />
+          )}
+
+          {showTutorial && (
+            <TutorialModal
+              theme={theme}
+              onClose={() => setShowTutorial(false)}
+              onNavigate={setActiveTab}
             />
           )}
 
@@ -3582,7 +3797,7 @@ Live Shop Data:
                     <div className="text-2xl">🧾</div>
                     <div className="font-black text-sm">Cart is Empty</div>
                     <p className="text-xs opacity-75">
-                      Tap 2+ items together to earn the Bundle Master badge!
+                      Add 2 different products or 3+ total units to earn the Bundle Master badge!
                     </p>
                   </div>
                 ) : (
