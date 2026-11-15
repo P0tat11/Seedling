@@ -143,7 +143,7 @@
     // ============================================================================
     // CONSTANTS: THEMES, VEGGIE & BUDDY MASCOTS, WEATHER & DAY OPTIONS
     // ============================================================================
-    const STORAGE_KEY = 'seedling_kidbiz_state_v2';
+    const LEGACY_STORAGE_KEY = 'seedling_kidbiz_state_v2';
 
     const THEMES = {
       mint: {
@@ -907,7 +907,10 @@
       totalTargetRevenue,
       dailySalesTarget,
       breakEvenPoint,
-      onComplete
+      onComplete,
+      onCancel,
+      accountError,
+      isSubmitting
     }) {
       const [stepError, setStepError] = useState('');
       const theme = THEMES[themeId] || THEMES.mint;
@@ -967,6 +970,11 @@
                 <PixelLogo size={36} />
                 <span className="font-black text-lg">Seedling Setup</span>
               </div>
+              {onCancel && (
+                <button type="button" onClick={onCancel} className="text-xs font-bold underline text-slate-600">
+                  Sign in instead
+                </button>
+              )}
               <span className={`px-3 py-1 rounded-full border text-xs font-black ${theme.accentBadge}`}>
                 Step {step} of 6
               </span>
@@ -1249,6 +1257,7 @@
             )}
 
             {stepError && <div className="text-xs font-black text-rose-500">{stepError}</div>}
+            {accountError && <div role="alert" className="text-xs font-black text-rose-600">{accountError}</div>}
 
             <div className="flex items-center justify-between pt-2">
               {step > 1 ? (
@@ -1269,9 +1278,10 @@
               <button
                 type="button"
                 onClick={validateAndNext}
+                disabled={Boolean(isSubmitting)}
                 className={`px-6 py-3 rounded-full border-2 font-black text-sm cursor-pointer ${theme.primaryBtn}`}
               >
-                {step === 6 ? 'Launch My Shop! 🚀' : 'Next Step →'}
+                {isSubmitting ? 'Creating account…' : step === 6 ? 'Launch My Shop! 🚀' : 'Next Step →'}
               </button>
             </div>
           </div>
@@ -1476,61 +1486,169 @@
     // ============================================================================
     // MAIN APPLICATION COMPONENT
     // ============================================================================
+    function AccountAccess({ onSignIn, onImport, onCreate, canImport, busy, error, onRetry }) {
+      const [contact, setContact] = useState('');
+      const [password, setPassword] = useState('');
+
+      const submit = async (event) => {
+        event.preventDefault();
+        await onSignIn(contact, password);
+      };
+
+      return (
+        <main className="min-h-screen bg-[#FFFDF7] text-slate-900 flex items-center justify-center p-4">
+          <section className="max-w-md w-full bg-white border-2 border-emerald-900/15 rounded-3xl shadow-[0_6px_0_rgba(16,185,129,0.14)] p-7 space-y-5">
+            <div className="flex items-center gap-3">
+              <PixelLogo size={42} />
+              <div>
+                <h1 className="font-black text-xl">Welcome to Seedling</h1>
+                <p className="text-sm text-slate-600">Sign in to your family account.</p>
+              </div>
+            </div>
+            <form onSubmit={submit} className="space-y-3">
+              <label className="block text-xs font-black">
+                Parent/account email or phone
+                <input
+                  type="text"
+                  autoComplete="username"
+                  required
+                  value={contact}
+                  onChange={(event) => setContact(event.target.value)}
+                  className="mt-1 w-full px-4 py-3 rounded-2xl border-2 border-slate-300 text-sm outline-none focus:border-emerald-500"
+                />
+              </label>
+              <label className="block text-xs font-black">
+                Password
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="mt-1 w-full px-4 py-3 rounded-2xl border-2 border-slate-300 text-sm outline-none focus:border-emerald-500"
+                />
+              </label>
+              {error && <p role="alert" className="text-sm font-bold text-rose-600">{error}</p>}
+              <button
+                type="submit"
+                disabled={busy}
+                className="w-full py-3 rounded-full border-2 border-emerald-700 bg-emerald-500 font-black disabled:opacity-60"
+              >
+                {busy ? 'Please wait…' : 'Sign in →'}
+              </button>
+            </form>
+            {canImport && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  if (window.confirm('Import the saved data from this browser into its family account? Existing account data will not be overwritten.')) {
+                    onImport();
+                  }
+                }}
+                className="w-full py-2.5 rounded-full border-2 border-slate-300 text-sm font-bold disabled:opacity-60"
+              >
+                Import saved browser data
+              </button>
+            )}
+            <div className="border-t border-slate-200 pt-4 text-center">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onCreate}
+                className="text-sm font-black text-emerald-800 underline disabled:opacity-60"
+              >
+                Create a new family account
+              </button>
+            </div>
+            {onRetry && (
+              <button type="button" onClick={onRetry} className="w-full text-xs font-bold text-slate-500 underline">
+                Retry server connection
+              </button>
+            )}
+          </section>
+        </main>
+      );
+    }
+
+    async function readApiResponse(response) {
+      let payload;
+      try {
+        payload = await response.json();
+      } catch {
+        throw new Error('The server did not return JSON. Check the API and database setup.');
+      }
+      if (!response.ok) {
+        throw new Error(payload.error || `Request failed (${response.status}).`);
+      }
+      return payload;
+    }
+
     function App() {
-      const saved = useMemo(() => {
+      const [legacyState, setLegacyState] = useState(() => {
         try {
-          const raw = window.localStorage.getItem(STORAGE_KEY);
-          return raw ? JSON.parse(raw) : null;
-        } catch (e) {
+          const raw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+          const parsed = raw ? JSON.parse(raw) : null;
+          return parsed && typeof parsed === 'object' ? parsed : null;
+        } catch (error) {
+          console.error('Unable to read legacy browser data:', error);
           return null;
         }
-      }, []);
+      });
+      const [authStatus, setAuthStatus] = useState('checking');
+      const [authError, setAuthError] = useState('');
+      const [authBusy, setAuthBusy] = useState(false);
+      const [isAuthenticated, setIsAuthenticated] = useState(false);
+      const [accountContact, setAccountContact] = useState('');
+      const [creatingAccount, setCreatingAccount] = useState(false);
+      const [stateLoaded, setStateLoaded] = useState(false);
+      const saveQueue = useRef(Promise.resolve());
+      const serverStateLoaded = useRef(false);
 
       // Navigation & App Shell State
-      const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(
-        saved?.hasCompletedOnboarding ?? false
-      );
-      const [onboardingStep, setOnboardingStep] = useState(saved?.onboardingStep ?? 1);
-      const [activeTab, setActiveTab] = useState(saved?.activeTab ?? 'home');
-      const [soundMuted, setSoundMuted] = useState(saved?.soundMuted ?? false);
-      const [shopOpen, setShopOpen] = useState(saved?.shopOpen ?? true);
+      const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+      const [onboardingStep, setOnboardingStep] = useState(1);
+      const [activeTab, setActiveTab] = useState('home');
+      const [soundMuted, setSoundMuted] = useState(false);
+      const [shopOpen, setShopOpen] = useState(true);
       const [saveBadgeText, setSaveBadgeText] = useState('Saved ✓');
+      const [saveError, setSaveError] = useState('');
       const [showTutorial, setShowTutorial] = useState(false);
 
       // Founder & Account Security State
-      const [kidName, setKidName] = useState(saved?.kidName ?? '');
-      const [kidAgeGroup, setKidAgeGroup] = useState(saved?.kidAgeGroup ?? '8-9');
-      const [parentKnows, setParentKnows] = useState(saved?.parentKnows ?? null);
-      const [contactMethod, setContactMethod] = useState(saved?.contactMethod ?? 'email');
-      const [parentContact, setParentContact] = useState(saved?.parentContact ?? '');
-      const [accountPassword, setAccountPassword] = useState(saved?.accountPassword ?? '');
+      const [kidName, setKidName] = useState('');
+      const [kidAgeGroup, setKidAgeGroup] = useState('8-9');
+      const [parentKnows, setParentKnows] = useState(null);
+      const [contactMethod, setContactMethod] = useState('email');
+      const [parentContact, setParentContact] = useState('');
+      const [accountPassword, setAccountPassword] = useState('');
       const [isLocked, setIsLocked] = useState(false);
       const [loginPasswordInput, setLoginPasswordInput] = useState('');
       const [loginError, setLoginError] = useState('');
 
       // Theme & Veggie Buddy State
-      const [themeId, setThemeId] = useState(saved?.themeId ?? 'mint');
-      const [mascotId, setMascotId] = useState(saved?.mascotId ?? 'sprout');
-      const [customMascotName, setCustomMascotName] = useState(saved?.customMascotName ?? '');
-      const [tycoonGems, setTycoonGems] = useState(saved?.tycoonGems ?? 0);
-      const [streakDays] = useState(saved?.streakDays ?? 1);
+      const [themeId, setThemeId] = useState('mint');
+      const [mascotId, setMascotId] = useState('sprout');
+      const [customMascotName, setCustomMascotName] = useState('');
+      const [tycoonGems, setTycoonGems] = useState(0);
+      const [streakDays, setStreakDays] = useState(1);
 
       // Saved Shops List (Multi-Shop Support)
-      const [shopsList, setShopsList] = useState(saved?.shopsList ?? []);
-      const [activeShopId, setActiveShopId] = useState(saved?.activeShopId ?? 'shop-1');
+      const [shopsList, setShopsList] = useState([]);
+      const [activeShopId, setActiveShopId] = useState('shop-1');
 
       // Business Goal & Inventory State (Shop Category starts blank)
-      const [businessName, setBusinessName] = useState(saved?.businessName ?? '');
-      const [category, setCategory] = useState(saved?.category ?? '');
-      const [goalItemName, setGoalItemName] = useState(saved?.goalItemName ?? '');
-      const [financialGoal, setFinancialGoal] = useState(saved?.financialGoal ?? 0);
-      const [durationDays, setDurationDays] = useState(saved?.durationDays ?? 3);
-      const [materialCost, setMaterialCost] = useState(saved?.materialCost ?? 0);
-      const [products, setProducts] = useState(saved?.products ?? []);
+      const [businessName, setBusinessName] = useState('');
+      const [category, setCategory] = useState('');
+      const [goalItemName, setGoalItemName] = useState('');
+      const [financialGoal, setFinancialGoal] = useState(0);
+      const [durationDays, setDurationDays] = useState(3);
+      const [materialCost, setMaterialCost] = useState(0);
+      const [products, setProducts] = useState([]);
 
       // Sales Log & Cart State
-      const [activeDay, setActiveDay] = useState(saved?.activeDay ?? 1);
-      const [salesLog, setSalesLog] = useState(saved?.salesLog ?? []);
+      const [activeDay, setActiveDay] = useState(1);
+      const [salesLog, setSalesLog] = useState([]);
       const [cart, setCart] = useState([]);
       const [barcodeInput, setBarcodeInput] = useState('');
       const [cashTendered, setCashTendered] = useState('');
@@ -1538,102 +1656,262 @@
 
       // Live Weather & Day-of-Week State
       const [liveWeatherInfo, setLiveWeatherInfo] = useState({ tempF: 64, condition: 'Partly Cloudy' });
-      const [forecastWeather, setForecastWeather] = useState(saved?.forecastWeather ?? 'cloudy');
-      const [forecastDow, setForecastDow] = useState(saved?.forecastDow ?? 'sun');
+      const [forecastWeather, setForecastWeather] = useState('cloudy');
+      const [forecastDow, setForecastDow] = useState('sun');
 
       // Interactive AI Chatbot Conversation History & Loading State
       const [chatMessages, setChatMessages] = useState([]);
       const [isAiTyping, setIsAiTyping] = useState(false);
 
       // Ollama Local LLM Settings
-      const [ollamaUrl, setOllamaUrl] = useState(saved?.ollamaUrl ?? 'http://localhost:11434/api/chat');
-      const [ollamaModel, setOllamaModel] = useState(saved?.ollamaModel ?? 'llama3.2');
+      const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434/api/chat');
+      const [ollamaModel, setOllamaModel] = useState('llama3.2');
       const [aiEngineStatus, setAiEngineStatus] = useState('AI Coach Ready');
 
       // Cash Register Tips, Bundle Badge & Confetti State
       const [tipAmount, setTipAmount] = useState(0);
-      const [earnedBadges, setEarnedBadges] = useState(saved?.earnedBadges ?? []);
+      const [earnedBadges, setEarnedBadges] = useState([]);
       const [showConfetti, setShowConfetti] = useState(false);
 
       // Close Shop End-of-Day Shift Wrap-Up & 3-Jar Profit Splitter Modal
       const [showShiftWrapUp, setShowShiftWrapUp] = useState(false);
-      const [jarAllocations, setJarAllocations] = useState(
-        saved?.jarAllocations ?? { goal: 70, supplies: 20, charity: 10 }
-      );
+      const [jarAllocations, setJarAllocations] = useState({ goal: 70, supplies: 20, charity: 10 });
+
+      const applyServerState = (state) => {
+        setHasCompletedOnboarding(state.hasCompletedOnboarding ?? false);
+        setOnboardingStep(state.onboardingStep ?? 1);
+        setActiveTab(state.activeTab ?? 'home');
+        setSoundMuted(state.soundMuted ?? false);
+        setShopOpen(state.shopOpen ?? true);
+        setKidName(state.kidName ?? '');
+        setKidAgeGroup(state.kidAgeGroup ?? '8-9');
+        setParentKnows(state.parentKnows ?? null);
+        setContactMethod(state.contactMethod ?? 'email');
+        setParentContact(state.parentContact ?? '');
+        setAccountPassword('');
+        setThemeId(state.themeId ?? 'mint');
+        setMascotId(state.mascotId ?? 'sprout');
+        setCustomMascotName(state.customMascotName ?? '');
+        setTycoonGems(state.tycoonGems ?? 0);
+        setStreakDays(state.streakDays ?? 1);
+        setShopsList(state.shopsList ?? []);
+        setActiveShopId(state.activeShopId ?? 'shop-1');
+        setBusinessName(state.businessName ?? '');
+        setCategory(state.category ?? '');
+        setGoalItemName(state.goalItemName ?? '');
+        setFinancialGoal(state.financialGoal ?? 0);
+        setDurationDays(state.durationDays ?? 3);
+        setMaterialCost(state.materialCost ?? 0);
+        setProducts(state.products ?? []);
+        setActiveDay(state.activeDay ?? 1);
+        setSalesLog(state.salesLog ?? []);
+        setOllamaUrl(state.ollamaUrl ?? 'http://localhost:11434/api/chat');
+        setOllamaModel(state.ollamaModel ?? 'llama3.2');
+        setForecastWeather(state.forecastWeather ?? 'cloudy');
+        setForecastDow(state.forecastDow ?? 'sun');
+        setEarnedBadges(state.earnedBadges ?? []);
+        setJarAllocations(state.jarAllocations ?? { goal: 70, supplies: 20, charity: 10 });
+        setIsLocked(false);
+        setCart([]);
+        setChatMessages([]);
+      };
+
+      const loadAccountState = async (contact) => {
+        const response = await fetch('/api/state', { credentials: 'same-origin' });
+        const result = await readApiResponse(response);
+        serverStateLoaded.current = true;
+        applyServerState(result.state);
+        setAccountContact(contact);
+        setIsAuthenticated(true);
+        setStateLoaded(true);
+        setCreatingAccount(false);
+        setAuthStatus('ready');
+        setAuthError('');
+      };
+
+      const checkSession = async () => {
+        setAuthStatus('checking');
+        setAuthError('');
+        try {
+          const response = await fetch('/api/auth', { credentials: 'same-origin' });
+          const result = await readApiResponse(response);
+          if (!result.authenticated) {
+            setAuthStatus('signed_out');
+            return;
+          }
+          await loadAccountState(result.contact);
+        } catch (error) {
+          setAuthError(error.message);
+          setAuthStatus('error');
+        }
+      };
+
+      useEffect(() => {
+        checkSession();
+      }, []);
+
+      const handleSignIn = async (contact, password) => {
+        setAuthBusy(true);
+        setAuthError('');
+        try {
+          const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ action: 'login', contact, password })
+          });
+          const result = await readApiResponse(response);
+          await loadAccountState(result.contact);
+        } catch (error) {
+          setAuthError(error.message);
+        } finally {
+          setAuthBusy(false);
+        }
+      };
+
+      const handleImportLegacy = async () => {
+        if (!legacyState || !legacyState.parentContact || !legacyState.accountPassword) {
+          setAuthError('The saved browser data does not contain account credentials to import.');
+          return;
+        }
+        setAuthBusy(true);
+        setAuthError('');
+        try {
+          const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ action: 'import', state: legacyState })
+          });
+          const result = await readApiResponse(response);
+          await loadAccountState(result.contact);
+          window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+          setLegacyState(null);
+        } catch (error) {
+          setAuthError(error.message);
+        } finally {
+          setAuthBusy(false);
+        }
+      };
+
+      const handleSignOut = async () => {
+        try {
+          const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ action: 'logout' })
+          });
+          await readApiResponse(response);
+          setIsAuthenticated(false);
+          setStateLoaded(false);
+          setAuthStatus('signed_out');
+          setCreatingAccount(false);
+          setIsLocked(false);
+          setAccountPassword('');
+          setCart([]);
+          serverStateLoaded.current = false;
+          applyServerState({});
+        } catch (error) {
+          setAuthError(error.message);
+        }
+      };
+
+      const buildPersistedState = (overrides = {}) => {
+        const currentShopSnapshot = {
+          id: activeShopId,
+          businessName,
+          category,
+          goalItemName,
+          financialGoal,
+          durationDays,
+          materialCost,
+          products,
+          activeDay,
+          salesLog,
+          earnedBadges,
+          jarAllocations
+        };
+        const updatedShops = shopsList.some((shop) => shop.id === activeShopId)
+          ? shopsList.map((shop) => (shop.id === activeShopId ? currentShopSnapshot : shop))
+          : [...shopsList, currentShopSnapshot];
+
+        return {
+          hasCompletedOnboarding,
+          onboardingStep,
+          activeTab,
+          soundMuted,
+          shopOpen,
+          kidName,
+          kidAgeGroup,
+          parentKnows,
+          contactMethod,
+          parentContact,
+          themeId,
+          mascotId,
+          customMascotName,
+          tycoonGems,
+          streakDays,
+          shopsList: updatedShops,
+          activeShopId,
+          businessName,
+          category,
+          goalItemName,
+          financialGoal,
+          durationDays,
+          materialCost,
+          products,
+          activeDay,
+          salesLog,
+          ollamaUrl,
+          ollamaModel,
+          forecastWeather,
+          forecastDow,
+          earnedBadges,
+          jarAllocations,
+          ...overrides
+        };
+      };
 
       useEffect(() => {
         fetchLiveLocalWeather().then((info) => {
           if (info) {
             setLiveWeatherInfo({ tempF: info.tempF, condition: info.condition });
-            if (!saved?.forecastWeather) {
+            if (!serverStateLoaded.current) {
               setForecastWeather(info.id);
             }
           }
         });
       }, []);
 
-      // Persist app state to localStorage automatically
       useEffect(() => {
-        try {
-          const currentShopSnapshot = {
-            id: activeShopId,
-            businessName,
-            category,
-            goalItemName,
-            financialGoal,
-            durationDays,
-            materialCost,
-            products,
-            activeDay,
-            salesLog,
-            earnedBadges,
-            jarAllocations
-          };
-          const updatedShops = shopsList.some((s) => s.id === activeShopId)
-            ? shopsList.map((s) => (s.id === activeShopId ? currentShopSnapshot : s))
-            : [...shopsList, currentShopSnapshot];
-
-          const payload = {
-            hasCompletedOnboarding,
-            onboardingStep,
-            activeTab,
-            soundMuted,
-            shopOpen,
-            kidName,
-            kidAgeGroup,
-            parentKnows,
-            contactMethod,
-            parentContact,
-            accountPassword,
-            themeId,
-            mascotId,
-            customMascotName,
-            tycoonGems,
-            streakDays,
-            shopsList: updatedShops,
-            activeShopId,
-            businessName,
-            category,
-            goalItemName,
-            financialGoal,
-            durationDays,
-            materialCost,
-            products,
-            activeDay,
-            salesLog,
-            ollamaUrl,
-            ollamaModel,
-            forecastWeather,
-            forecastDow,
-            earnedBadges,
-            jarAllocations
-          };
-          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-          setSaveBadgeText('Saved ✓');
-        } catch (e) {
-          setSaveBadgeText('Save Err');
-        }
+        if (!isAuthenticated || !stateLoaded) return undefined;
+        const payload = buildPersistedState();
+        const timeoutId = setTimeout(() => {
+          setSaveBadgeText('Saving…');
+          saveQueue.current = saveQueue.current
+            .catch(() => undefined)
+            .then(async () => {
+              const response = await fetch('/api/state', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ state: payload })
+              });
+              await readApiResponse(response);
+              setSaveError('');
+              setSaveBadgeText('Saved ✓');
+            })
+            .catch((error) => {
+              console.error('Saving account data failed:', error);
+              setSaveError(error.message);
+              setSaveBadgeText('Save Err');
+            });
+        }, 700);
+        return () => clearTimeout(timeoutId);
       }, [
+        isAuthenticated,
+        stateLoaded,
         hasCompletedOnboarding,
         onboardingStep,
         activeTab,
@@ -1644,7 +1922,6 @@
         parentKnows,
         contactMethod,
         parentContact,
-        accountPassword,
         themeId,
         mascotId,
         customMascotName,
@@ -1763,10 +2040,22 @@
         setActiveTab('home');
       };
 
-      const handleResetAllData = () => {
+      const handleResetAllData = async () => {
+        if (!window.confirm('Delete this family account’s onboarding, shops, inventory, and transactions? This cannot be undone.')) {
+          return;
+        }
         try {
-          window.localStorage.removeItem(STORAGE_KEY);
-        } catch (e) {}
+          const response = await fetch('/api/state', {
+            method: 'DELETE',
+            credentials: 'same-origin'
+          });
+          await readApiResponse(response);
+        } catch (error) {
+          console.error('Resetting account data failed:', error);
+          window.alert(error.message);
+          return;
+        }
+        setStateLoaded(false);
         setKidName('');
         setKidAgeGroup('8-9');
         setParentKnows(null);
@@ -1799,6 +2088,52 @@
         setOnboardingStep(1);
         setHasCompletedOnboarding(false);
         setActiveTab('home');
+        setForecastWeather('cloudy');
+        setForecastDow('sun');
+        setSoundMuted(false);
+      };
+
+      const handleOnboardingComplete = async () => {
+        if (isAuthenticated) {
+          setHasCompletedOnboarding(true);
+          setActiveTab('home');
+          setStateLoaded(true);
+          return;
+        }
+        setAuthBusy(true);
+        setAuthError('');
+        const state = buildPersistedState({
+          hasCompletedOnboarding: true,
+          onboardingStep: 6,
+          activeTab: 'home'
+        });
+        try {
+          const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+              action: 'register',
+              contact: parentContact,
+              password: accountPassword,
+              state
+            })
+          });
+          const result = await readApiResponse(response);
+          setAccountContact(result.contact);
+          setIsAuthenticated(true);
+          setAuthStatus('ready');
+          setCreatingAccount(false);
+          setHasCompletedOnboarding(true);
+          setActiveTab('home');
+          setAccountPassword('');
+          setStateLoaded(true);
+        } catch (error) {
+          setAuthError(error.message);
+          setSaveBadgeText('Save Err');
+        } finally {
+          setAuthBusy(false);
+        }
       };
 
       const displayKidName = censorKidSafeText(kidName.trim()) || 'Founder';
@@ -2133,6 +2468,13 @@ Live Shop Data:
           timestamp,
           itemsSummary,
           unitsCount,
+          items: cart.map((item) => ({
+            id: item.id,
+            name: item.name,
+            qty: item.qty,
+            price: item.price,
+            unitCost: item.unitCost
+          })),
           tip: Number(tipAmount || 0),
           total: cartSubtotal,
           profit: Number((cartSubtotal - cartCostTotal).toFixed(2))
@@ -2161,7 +2503,48 @@ Live Shop Data:
         setTimeout(() => setPosBanner(null), 3800);
       };
 
-      if (isLocked && accountPassword) {
+      if (authStatus === 'checking') {
+        return (
+          <main className="min-h-screen bg-[#FFFDF7] flex items-center justify-center">
+            <p className="font-black text-emerald-900">Connecting to Seedling…</p>
+          </main>
+        );
+      }
+
+      if (authStatus === 'error') {
+        return (
+          <main className="min-h-screen bg-[#FFFDF7] flex items-center justify-center p-4">
+            <section className="max-w-md w-full bg-white border-2 border-rose-200 rounded-3xl p-7 space-y-4">
+              <h1 className="text-xl font-black">Seedling could not connect</h1>
+              <p role="alert" className="text-sm text-rose-700">{authError}</p>
+              <p className="text-sm text-slate-600">Check the Neon database setup and start Seedling with its API server.</p>
+              <button onClick={checkSession} className="w-full py-3 rounded-full border-2 border-emerald-700 bg-emerald-500 font-black">
+                Retry connection
+              </button>
+            </section>
+          </main>
+        );
+      }
+
+      if (authStatus === 'signed_out' && !creatingAccount) {
+        return (
+          <AccountAccess
+            onSignIn={handleSignIn}
+            onImport={handleImportLegacy}
+            onCreate={() => {
+              setAuthError('');
+              setCreatingAccount(true);
+              setHasCompletedOnboarding(false);
+              setOnboardingStep(1);
+            }}
+            canImport={Boolean(legacyState?.parentContact && legacyState?.accountPassword)}
+            busy={authBusy}
+            error={authError}
+          />
+        );
+      }
+
+      if (isLocked) {
         return (
           <div className={`min-h-screen ${theme.bg} ${theme.text} flex items-center justify-center p-4`}>
             <div className={`max-w-md w-full ${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-7 text-center space-y-5`}>
@@ -2180,13 +2563,25 @@ Live Shop Data:
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (loginPasswordInput === accountPassword) {
+                  setAuthBusy(true);
+                  fetch('/api/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                      action: 'login',
+                      contact: accountContact,
+                      password: loginPasswordInput
+                    })
+                  })
+                    .then(readApiResponse)
+                    .then(() => {
                     setIsLocked(false);
                     setLoginPasswordInput('');
                     setLoginError('');
-                  } else {
-                    setLoginError('Wrong password! Try again.');
-                  }
+                    })
+                    .catch((error) => setLoginError(error.message))
+                    .finally(() => setAuthBusy(false));
                 }}
                 className="space-y-3"
               >
@@ -2200,6 +2595,7 @@ Live Shop Data:
                 {loginError && <div className="text-xs font-black text-rose-500">{loginError}</div>}
                 <button
                   type="submit"
+                  disabled={authBusy}
                   className={`w-full py-3.5 rounded-full border-2 font-black text-sm cursor-pointer ${theme.primaryBtn}`}
                 >
                   Unlock Shop →
@@ -2248,10 +2644,13 @@ Live Shop Data:
             totalTargetRevenue={totalTargetRevenue}
             dailySalesTarget={dailySalesTarget}
             breakEvenPoint={breakEvenPoint}
-            onComplete={() => {
-              setHasCompletedOnboarding(true);
-              setActiveTab('home');
-            }}
+            onComplete={handleOnboardingComplete}
+            onCancel={creatingAccount ? () => {
+              setCreatingAccount(false);
+              setAuthError('');
+            } : undefined}
+            accountError={authError}
+            isSubmitting={authBusy}
           />
         );
       }
@@ -2273,7 +2672,13 @@ Live Shop Data:
                 <PixelLogo size={38} />
                 <div className="text-left">
                   <div className="font-black text-base leading-none tracking-tight">Seedling</div>
-                  <div className={`text-[10px] font-bold ${theme.mutedText}`}>{saveBadgeText}</div>
+                  <div
+                    className={`text-[10px] font-bold ${saveError ? 'text-rose-600' : theme.mutedText}`}
+                    title={saveError || saveBadgeText}
+                    role={saveError ? 'alert' : undefined}
+                  >
+                    {saveError ? `Save failed: ${saveError}` : saveBadgeText}
+                  </div>
                 </div>
               </button>
 
@@ -2338,7 +2743,7 @@ Live Shop Data:
                 >
                   {soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                 </button>
-                {accountPassword && (
+                {isAuthenticated && (
                   <button
                     onClick={() => setIsLocked(true)}
                     className={`px-3 py-1.5 rounded-full border text-xs font-extrabold cursor-pointer ${theme.pillBg}`}
@@ -2351,6 +2756,12 @@ Live Shop Data:
                   className={`px-3 py-1.5 rounded-full border text-xs font-extrabold text-rose-500 cursor-pointer ${theme.pillBg}`}
                 >
                   Reset
+                </button>
+                <button
+                  onClick={handleSignOut}
+                  className={`px-3 py-1.5 rounded-full border text-xs font-extrabold cursor-pointer ${theme.pillBg}`}
+                >
+                  Sign out
                 </button>
               </div>
             </header>
