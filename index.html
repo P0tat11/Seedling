@@ -2227,14 +2227,18 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
             /cocoa|hot chocolate|coffee|tea|cider|warm/i.test(p.name)
           );
           const coldDrinks = products.filter((p) =>
-            /lemonade|snow|ice|popsicle|slush|iced|cold|smoothie/i.test(p.name)
+            /lemonade|iced|ice cream|snow|slush|smoothie|popsicle|soda|juice|cold/i.test(p.name)
           );
           const existingNamesLower = products.map((p) => p.name.toLowerCase());
 
-          // Question: "Is there anything else I could sell that I don't have?" / "What should I add?"
+          // Question: "Is there anything else I could sell that I don't have?" / "What do I not have that I should add?"
           if (
             lower.includes("don't have") ||
             lower.includes('dont have') ||
+            lower.includes('not have') ||
+            lower.includes('dont already have') ||
+            lower.includes("don't already have") ||
+            lower.includes('missing') ||
             lower.includes('anything else') ||
             lower.includes('something else') ||
             lower.includes('what else') ||
