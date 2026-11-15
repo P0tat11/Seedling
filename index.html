@@ -2211,11 +2211,59 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
           const coldDrinks = products.filter((p) =>
             /lemonade|snow|ice|popsicle|slush|iced|cold|smoothie/i.test(p.name)
           );
+          const existingNamesLower = products.map((p) => p.name.toLowerCase());
 
-          // Question: "What should I sell today / from my inventory?"
+          // Question: "Is there anything else I could sell that I don't have?" / New product ideas
           if (
+            lower.includes("don't have") ||
+            lower.includes('dont have') ||
+            lower.includes('anything else') ||
+            lower.includes('something else') ||
+            lower.includes('what else') ||
+            lower.includes('new item') ||
+            lower.includes('new product') ||
+            (lower.includes('idea') && !lower.includes('sign'))
+          ) {
+            const candidatePool = isColdOut
+              ? [
+                  { name: 'Warm Chocolate Chip Cookies', price: 2.5, why: 'pairs great with Hot Cocoa on a chilly day' },
+                  { name: 'Cinnamon Apple Cider', price: 3.0, why: 'super cozy fall/winter bestseller' },
+                  { name: 'Friendship Bracelets', price: 3.5, why: 'easy to make ahead and sells in any weather' },
+                  { name: 'Mini Brownie Bites', price: 2.0, why: 'high profit margin and kids love them' }
+                ]
+              : [
+                  { name: 'Rainbow Snow Cones', price: 3.0, why: 'huge hit in warm weather with super low supply cost' },
+                  { name: 'Chocolate Chip Cookies', price: 2.0, why: 'easy combo upsell next to cold drinks' },
+                  { name: 'Friendship Bracelets', price: 3.5, why: 'high-margin craft that never melts' },
+                  { name: 'DIY Slime Cups', price: 4.0, why: 'kids always stop to check out colorful slime' }
+                ];
+
+            const freshIdeas = candidatePool
+              .filter((idea) => !existingNamesLower.some((ex) => ex.includes(idea.name.toLowerCase().split(' ')[0])))
+              .slice(0, 3);
+
+            const ideaText = freshIdeas
+              .map((i) => `${i.name} (~$${i.price.toFixed(2)} — ${i.why})`)
+              .join('; ');
+
+            replyText = formatByAge(kidAgeGroup, {
+              young: `Ooh! Since it's ${tempF}°F right now, you could add ${ideaText}! Tell me which one you like and I'll draw its picture and add it!`,
+              kid: `Since you don't have these yet and it's ${tempF}°F in ${liveWeatherReport.locationLabel}, try adding ${ideaText}. Just say "add [item name]" if you want me to put one on your menu!`,
+              tween: `To round out your menu for ${tempF}°F weather, here are 3 things you don't have yet: ${ideaText}. Want me to add one of them to your inventory?`,
+              teen: `To complement your current menu in ${tempF}°F weather, consider adding: ${ideaText}. Say "add [item]" and I'll set it up with a product graphic.`
+            });
+          } else if (
+            // Question: "What should I sell today / from my inventory?"
             (lower.includes('what') || lower.includes('which') || lower.includes('recommend') || lower.includes('best')) &&
             (lower.includes('sell') || lower.includes('item') || lower.includes('product') || lower.includes('today'))
+          ) {
+          } else if (
+            lower.includes('inventory') ||
+            lower.includes('menu') ||
+            lower.includes('products') ||
+            lower.includes('what do i have') ||
+            lower.includes('what i have') ||
+            lower.includes('on my shelf')
           ) {
             if (products.length === 0) {
               replyText = formatByAge(kidAgeGroup, {
