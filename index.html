@@ -143,7 +143,7 @@
     // ============================================================================
     // CONSTANTS: THEMES, VEGGIE & BUDDY MASCOTS, WEATHER & DAY OPTIONS
     // ============================================================================
-    const STORAGE_KEY = 'seedling_kidbiz_state_v2';
+    const LEGACY_STORAGE_KEY = 'seedling_kidbiz_state_v2';
 
     const THEMES = {
       mint: {
@@ -907,7 +907,10 @@
       totalTargetRevenue,
       dailySalesTarget,
       breakEvenPoint,
-      onComplete
+      onComplete,
+      onCancel,
+      accountError,
+      isSubmitting
     }) {
       const [stepError, setStepError] = useState('');
       const theme = THEMES[themeId] || THEMES.mint;
@@ -967,6 +970,11 @@
                 <PixelLogo size={36} />
                 <span className="font-black text-lg">Seedling Setup</span>
               </div>
+              {onCancel && (
+                <button type="button" onClick={onCancel} className="text-xs font-bold underline text-slate-600">
+                  Sign in instead
+                </button>
+              )}
               <span className={`px-3 py-1 rounded-full border text-xs font-black ${theme.accentBadge}`}>
                 Step {step} of 6
               </span>
@@ -1249,6 +1257,7 @@
             )}
 
             {stepError && <div className="text-xs font-black text-rose-500">{stepError}</div>}
+            {accountError && <div role="alert" className="text-xs font-black text-rose-600">{accountError}</div>}
 
             <div className="flex items-center justify-between pt-2">
               {step > 1 ? (
@@ -1269,9 +1278,10 @@
               <button
                 type="button"
                 onClick={validateAndNext}
+                disabled={Boolean(isSubmitting)}
                 className={`px-6 py-3 rounded-full border-2 font-black text-sm cursor-pointer ${theme.primaryBtn}`}
               >
-                {step === 6 ? 'Launch My Shop! 🚀' : 'Next Step →'}
+                {isSubmitting ? 'Creating account…' : step === 6 ? 'Launch My Shop! 🚀' : 'Next Step →'}
               </button>
             </div>
           </div>
@@ -1476,61 +1486,169 @@
     // ============================================================================
     // MAIN APPLICATION COMPONENT
     // ============================================================================
+    function AccountAccess({ onSignIn, onImport, onCreate, canImport, busy, error, onRetry }) {
+      const [contact, setContact] = useState('');
+      const [password, setPassword] = useState('');
+
+      const submit = async (event) => {
+        event.preventDefault();
+        await onSignIn(contact, password);
+      };
+
+      return (
+        <main className="min-h-screen bg-[#FFFDF7] text-slate-900 flex items-center justify-center p-4">
+          <section className="max-w-md w-full bg-white border-2 border-emerald-900/15 rounded-3xl shadow-[0_6px_0_rgba(16,185,129,0.14)] p-7 space-y-5">
+            <div className="flex items-center gap-3">
+              <PixelLogo size={42} />
+              <div>
+                <h1 className="font-black text-xl">Welcome to Seedling</h1>
+                <p className="text-sm text-slate-600">Sign in to your family account.</p>
+              </div>
+            </div>
+            <form onSubmit={submit} className="space-y-3">
+              <label className="block text-xs font-black">
+                Parent/account email or phone
+                <input
+                  type="text"
+                  autoComplete="username"
+                  required
+                  value={contact}
+                  onChange={(event) => setContact(event.target.value)}
+                  className="mt-1 w-full px-4 py-3 rounded-2xl border-2 border-slate-300 text-sm outline-none focus:border-emerald-500"
+                />
+              </label>
+              <label className="block text-xs font-black">
+                Password
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="mt-1 w-full px-4 py-3 rounded-2xl border-2 border-slate-300 text-sm outline-none focus:border-emerald-500"
+                />
+              </label>
+              {error && <p role="alert" className="text-sm font-bold text-rose-600">{error}</p>}
+              <button
+                type="submit"
+                disabled={busy}
+                className="w-full py-3 rounded-full border-2 border-emerald-700 bg-emerald-500 font-black disabled:opacity-60"
+              >
+                {busy ? 'Please wait…' : 'Sign in →'}
+              </button>
+            </form>
+            {canImport && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  if (window.confirm('Import the saved data from this browser into its family account? Existing account data will not be overwritten.')) {
+                    onImport();
+                  }
+                }}
+                className="w-full py-2.5 rounded-full border-2 border-slate-300 text-sm font-bold disabled:opacity-60"
+              >
+                Import saved browser data
+              </button>
+            )}
+            <div className="border-t border-slate-200 pt-4 text-center">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onCreate}
+                className="text-sm font-black text-emerald-800 underline disabled:opacity-60"
+              >
+                Create a new family account
+              </button>
+            </div>
+            {onRetry && (
+              <button type="button" onClick={onRetry} className="w-full text-xs font-bold text-slate-500 underline">
+                Retry server connection
+              </button>
+            )}
+          </section>
+        </main>
+      );
+    }
+
+    async function readApiResponse(response) {
+      let payload;
+      try {
+        payload = await response.json();
+      } catch {
+        throw new Error('The server did not return JSON. Check the API and database setup.');
+      }
+      if (!response.ok) {
+        throw new Error(payload.error || `Request failed (${response.status}).`);
+      }
+      return payload;
+    }
+
     function App() {
-      const saved = useMemo(() => {
+      const [legacyState, setLegacyState] = useState(() => {
         try {
-          const raw = window.localStorage.getItem(STORAGE_KEY);
-          return raw ? JSON.parse(raw) : null;
-        } catch (e) {
+          const raw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+          const parsed = raw ? JSON.parse(raw) : null;
+          return parsed && typeof parsed === 'object' ? parsed : null;
+        } catch (error) {
+          console.error('Unable to read legacy browser data:', error);
           return null;
         }
-      }, []);
+      });
+      const [authStatus, setAuthStatus] = useState('checking');
+      const [authError, setAuthError] = useState('');
+      const [authBusy, setAuthBusy] = useState(false);
+      const [isAuthenticated, setIsAuthenticated] = useState(false);
+      const [accountContact, setAccountContact] = useState('');
+      const [creatingAccount, setCreatingAccount] = useState(false);
+      const [stateLoaded, setStateLoaded] = useState(false);
+      const saveQueue = useRef(Promise.resolve());
+      const serverStateLoaded = useRef(false);
 
       // Navigation & App Shell State
-      const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(
-        saved?.hasCompletedOnboarding ?? false
-      );
-      const [onboardingStep, setOnboardingStep] = useState(saved?.onboardingStep ?? 1);
-      const [activeTab, setActiveTab] = useState(saved?.activeTab ?? 'home');
-      const [soundMuted, setSoundMuted] = useState(saved?.soundMuted ?? false);
-      const [shopOpen, setShopOpen] = useState(saved?.shopOpen ?? true);
+      const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+      const [onboardingStep, setOnboardingStep] = useState(1);
+      const [activeTab, setActiveTab] = useState('home');
+      const [soundMuted, setSoundMuted] = useState(false);
+      const [shopOpen, setShopOpen] = useState(true);
       const [saveBadgeText, setSaveBadgeText] = useState('Saved ✓');
+      const [saveError, setSaveError] = useState('');
       const [showTutorial, setShowTutorial] = useState(false);
 
       // Founder & Account Security State
-      const [kidName, setKidName] = useState(saved?.kidName ?? '');
-      const [kidAgeGroup, setKidAgeGroup] = useState(saved?.kidAgeGroup ?? '8-9');
-      const [parentKnows, setParentKnows] = useState(saved?.parentKnows ?? null);
-      const [contactMethod, setContactMethod] = useState(saved?.contactMethod ?? 'email');
-      const [parentContact, setParentContact] = useState(saved?.parentContact ?? '');
-      const [accountPassword, setAccountPassword] = useState(saved?.accountPassword ?? '');
+      const [kidName, setKidName] = useState('');
+      const [kidAgeGroup, setKidAgeGroup] = useState('8-9');
+      const [parentKnows, setParentKnows] = useState(null);
+      const [contactMethod, setContactMethod] = useState('email');
+      const [parentContact, setParentContact] = useState('');
+      const [accountPassword, setAccountPassword] = useState('');
       const [isLocked, setIsLocked] = useState(false);
       const [loginPasswordInput, setLoginPasswordInput] = useState('');
       const [loginError, setLoginError] = useState('');
 
       // Theme & Veggie Buddy State
-      const [themeId, setThemeId] = useState(saved?.themeId ?? 'mint');
-      const [mascotId, setMascotId] = useState(saved?.mascotId ?? 'sprout');
-      const [customMascotName, setCustomMascotName] = useState(saved?.customMascotName ?? '');
-      const [tycoonGems, setTycoonGems] = useState(saved?.tycoonGems ?? 0);
-      const [streakDays] = useState(saved?.streakDays ?? 1);
+      const [themeId, setThemeId] = useState('mint');
+      const [mascotId, setMascotId] = useState('sprout');
+      const [customMascotName, setCustomMascotName] = useState('');
+      const [tycoonGems, setTycoonGems] = useState(0);
+      const [streakDays, setStreakDays] = useState(1);
 
       // Saved Shops List (Multi-Shop Support)
-      const [shopsList, setShopsList] = useState(saved?.shopsList ?? []);
-      const [activeShopId, setActiveShopId] = useState(saved?.activeShopId ?? 'shop-1');
+      const [shopsList, setShopsList] = useState([]);
+      const [activeShopId, setActiveShopId] = useState('shop-1');
 
       // Business Goal & Inventory State (Shop Category starts blank)
-      const [businessName, setBusinessName] = useState(saved?.businessName ?? '');
-      const [category, setCategory] = useState(saved?.category ?? '');
-      const [goalItemName, setGoalItemName] = useState(saved?.goalItemName ?? '');
-      const [financialGoal, setFinancialGoal] = useState(saved?.financialGoal ?? 0);
-      const [durationDays, setDurationDays] = useState(saved?.durationDays ?? 3);
-      const [materialCost, setMaterialCost] = useState(saved?.materialCost ?? 0);
-      const [products, setProducts] = useState(saved?.products ?? []);
+      const [businessName, setBusinessName] = useState('');
+      const [category, setCategory] = useState('');
+      const [goalItemName, setGoalItemName] = useState('');
+      const [financialGoal, setFinancialGoal] = useState(0);
+      const [durationDays, setDurationDays] = useState(3);
+      const [materialCost, setMaterialCost] = useState(0);
+      const [products, setProducts] = useState([]);
 
       // Sales Log & Cart State
-      const [activeDay, setActiveDay] = useState(saved?.activeDay ?? 1);
-      const [salesLog, setSalesLog] = useState(saved?.salesLog ?? []);
+      const [activeDay, setActiveDay] = useState(1);
+      const [salesLog, setSalesLog] = useState([]);
       const [cart, setCart] = useState([]);
       const [barcodeInput, setBarcodeInput] = useState('');
       const [cashTendered, setCashTendered] = useState('');
@@ -1538,120 +1656,262 @@
 
       // Live Weather & Day-of-Week State
       const [liveWeatherInfo, setLiveWeatherInfo] = useState({ tempF: 64, condition: 'Partly Cloudy' });
-      const [forecastWeather, setForecastWeather] = useState(saved?.forecastWeather ?? 'cloudy');
-      const [forecastDow, setForecastDow] = useState(saved?.forecastDow ?? 'sun');
+      const [forecastWeather, setForecastWeather] = useState('cloudy');
+      const [forecastDow, setForecastDow] = useState('sun');
 
       // Interactive AI Chatbot Conversation History & Loading State
       const [chatMessages, setChatMessages] = useState([]);
       const [isAiTyping, setIsAiTyping] = useState(false);
 
       // Ollama Local LLM Settings
-      const [ollamaUrl, setOllamaUrl] = useState(saved?.ollamaUrl ?? 'http://localhost:11434/api/chat');
-      const [ollamaModel, setOllamaModel] = useState(saved?.ollamaModel ?? 'llama3.2');
+      const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434/api/chat');
+      const [ollamaModel, setOllamaModel] = useState('llama3.2');
       const [aiEngineStatus, setAiEngineStatus] = useState('AI Coach Ready');
 
       // Cash Register Tips, Bundle Badge & Confetti State
       const [tipAmount, setTipAmount] = useState(0);
-      const [earnedBadges, setEarnedBadges] = useState(saved?.earnedBadges ?? []);
+      const [earnedBadges, setEarnedBadges] = useState([]);
       const [showConfetti, setShowConfetti] = useState(false);
 
       // Close Shop End-of-Day Shift Wrap-Up & 3-Jar Profit Splitter Modal
       const [showShiftWrapUp, setShowShiftWrapUp] = useState(false);
-      const [jarAllocations, setJarAllocations] = useState(
-        saved?.jarAllocations ?? { goal: 70, supplies: 20, charity: 10 }
-      );
+      const [jarAllocations, setJarAllocations] = useState({ goal: 70, supplies: 20, charity: 10 });
 
-      const handleOpenShop = () => {
-        setShopOpen(true);
-        setShowTutorial(false);
-        setActiveTab('pos');
+      const applyServerState = (state) => {
+        setHasCompletedOnboarding(state.hasCompletedOnboarding ?? false);
+        setOnboardingStep(state.onboardingStep ?? 1);
+        setActiveTab(state.activeTab ?? 'home');
+        setSoundMuted(state.soundMuted ?? false);
+        setShopOpen(state.shopOpen ?? true);
+        setKidName(state.kidName ?? '');
+        setKidAgeGroup(state.kidAgeGroup ?? '8-9');
+        setParentKnows(state.parentKnows ?? null);
+        setContactMethod(state.contactMethod ?? 'email');
+        setParentContact(state.parentContact ?? '');
+        setAccountPassword('');
+        setThemeId(state.themeId ?? 'mint');
+        setMascotId(state.mascotId ?? 'sprout');
+        setCustomMascotName(state.customMascotName ?? '');
+        setTycoonGems(state.tycoonGems ?? 0);
+        setStreakDays(state.streakDays ?? 1);
+        setShopsList(state.shopsList ?? []);
+        setActiveShopId(state.activeShopId ?? 'shop-1');
+        setBusinessName(state.businessName ?? '');
+        setCategory(state.category ?? '');
+        setGoalItemName(state.goalItemName ?? '');
+        setFinancialGoal(state.financialGoal ?? 0);
+        setDurationDays(state.durationDays ?? 3);
+        setMaterialCost(state.materialCost ?? 0);
+        setProducts(state.products ?? []);
+        setActiveDay(state.activeDay ?? 1);
+        setSalesLog(state.salesLog ?? []);
+        setOllamaUrl(state.ollamaUrl ?? 'http://localhost:11434/api/chat');
+        setOllamaModel(state.ollamaModel ?? 'llama3.2');
+        setForecastWeather(state.forecastWeather ?? 'cloudy');
+        setForecastDow(state.forecastDow ?? 'sun');
+        setEarnedBadges(state.earnedBadges ?? []);
+        setJarAllocations(state.jarAllocations ?? { goal: 70, supplies: 20, charity: 10 });
+        setIsLocked(false);
+        setCart([]);
+        setChatMessages([]);
       };
 
-      const handleCloseShop = () => {
-        setShopOpen(false);
-        setActiveTab('home');
-        setShowShiftWrapUp(true);
+      const loadAccountState = async (contact) => {
+        const response = await fetch('/api/state', { credentials: 'same-origin' });
+        const result = await readApiResponse(response);
+        serverStateLoaded.current = true;
+        applyServerState(result.state);
+        setAccountContact(contact);
+        setIsAuthenticated(true);
+        setStateLoaded(true);
+        setCreatingAccount(false);
+        setAuthStatus('ready');
+        setAuthError('');
+      };
+
+      const checkSession = async () => {
+        setAuthStatus('checking');
+        setAuthError('');
+        try {
+          const response = await fetch('/api/auth', { credentials: 'same-origin' });
+          const result = await readApiResponse(response);
+          if (!result.authenticated) {
+            setAuthStatus('signed_out');
+            return;
+          }
+          await loadAccountState(result.contact);
+        } catch (error) {
+          setAuthError(error.message);
+          setAuthStatus('error');
+        }
       };
 
       useEffect(() => {
-        if (!shopOpen && activeTab === 'pos') {
-          setActiveTab('home');
+        checkSession();
+      }, []);
+
+      const handleSignIn = async (contact, password) => {
+        setAuthBusy(true);
+        setAuthError('');
+        try {
+          const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ action: 'login', contact, password })
+          });
+          const result = await readApiResponse(response);
+          await loadAccountState(result.contact);
+        } catch (error) {
+          setAuthError(error.message);
+        } finally {
+          setAuthBusy(false);
         }
-      }, [shopOpen, activeTab]);
+      };
+
+      const handleImportLegacy = async () => {
+        if (!legacyState || !legacyState.parentContact || !legacyState.accountPassword) {
+          setAuthError('The saved browser data does not contain account credentials to import.');
+          return;
+        }
+        setAuthBusy(true);
+        setAuthError('');
+        try {
+          const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ action: 'import', state: legacyState })
+          });
+          const result = await readApiResponse(response);
+          await loadAccountState(result.contact);
+          window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+          setLegacyState(null);
+        } catch (error) {
+          setAuthError(error.message);
+        } finally {
+          setAuthBusy(false);
+        }
+      };
+
+      const handleSignOut = async () => {
+        try {
+          const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ action: 'logout' })
+          });
+          await readApiResponse(response);
+          setIsAuthenticated(false);
+          setStateLoaded(false);
+          setAuthStatus('signed_out');
+          setCreatingAccount(false);
+          setIsLocked(false);
+          setAccountPassword('');
+          setCart([]);
+          serverStateLoaded.current = false;
+          applyServerState({});
+        } catch (error) {
+          setAuthError(error.message);
+        }
+      };
+
+      const buildPersistedState = (overrides = {}) => {
+        const currentShopSnapshot = {
+          id: activeShopId,
+          businessName,
+          category,
+          goalItemName,
+          financialGoal,
+          durationDays,
+          materialCost,
+          products,
+          activeDay,
+          salesLog,
+          earnedBadges,
+          jarAllocations
+        };
+        const updatedShops = shopsList.some((shop) => shop.id === activeShopId)
+          ? shopsList.map((shop) => (shop.id === activeShopId ? currentShopSnapshot : shop))
+          : [...shopsList, currentShopSnapshot];
+
+        return {
+          hasCompletedOnboarding,
+          onboardingStep,
+          activeTab,
+          soundMuted,
+          shopOpen,
+          kidName,
+          kidAgeGroup,
+          parentKnows,
+          contactMethod,
+          parentContact,
+          themeId,
+          mascotId,
+          customMascotName,
+          tycoonGems,
+          streakDays,
+          shopsList: updatedShops,
+          activeShopId,
+          businessName,
+          category,
+          goalItemName,
+          financialGoal,
+          durationDays,
+          materialCost,
+          products,
+          activeDay,
+          salesLog,
+          ollamaUrl,
+          ollamaModel,
+          forecastWeather,
+          forecastDow,
+          earnedBadges,
+          jarAllocations,
+          ...overrides
+        };
+      };
 
       useEffect(() => {
         fetchLiveLocalWeather().then((info) => {
           if (info) {
             setLiveWeatherInfo({ tempF: info.tempF, condition: info.condition });
-            if (!saved?.forecastWeather) {
+            if (!serverStateLoaded.current) {
               setForecastWeather(info.id);
             }
           }
         });
       }, []);
 
-      // Persist app state to localStorage automatically
       useEffect(() => {
-        try {
-          const currentShopSnapshot = {
-            id: activeShopId,
-            businessName,
-            category,
-            goalItemName,
-            financialGoal,
-            durationDays,
-            materialCost,
-            products,
-            activeDay,
-            salesLog,
-            earnedBadges,
-            jarAllocations
-          };
-          const updatedShops = shopsList.some((s) => s.id === activeShopId)
-            ? shopsList.map((s) => (s.id === activeShopId ? currentShopSnapshot : s))
-            : [...shopsList, currentShopSnapshot];
-
-          const payload = {
-            hasCompletedOnboarding,
-            onboardingStep,
-            activeTab,
-            soundMuted,
-            shopOpen,
-            kidName,
-            kidAgeGroup,
-            parentKnows,
-            contactMethod,
-            parentContact,
-            accountPassword,
-            themeId,
-            mascotId,
-            customMascotName,
-            tycoonGems,
-            streakDays,
-            shopsList: updatedShops,
-            activeShopId,
-            businessName,
-            category,
-            goalItemName,
-            financialGoal,
-            durationDays,
-            materialCost,
-            products,
-            activeDay,
-            salesLog,
-            ollamaUrl,
-            ollamaModel,
-            forecastWeather,
-            forecastDow,
-            earnedBadges,
-            jarAllocations
-          };
-          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-          setSaveBadgeText('Saved ✓');
-        } catch (e) {
-          setSaveBadgeText('Save Err');
-        }
+        if (!isAuthenticated || !stateLoaded) return undefined;
+        const payload = buildPersistedState();
+        const timeoutId = setTimeout(() => {
+          setSaveBadgeText('Saving…');
+          saveQueue.current = saveQueue.current
+            .catch(() => undefined)
+            .then(async () => {
+              const response = await fetch('/api/state', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ state: payload })
+              });
+              await readApiResponse(response);
+              setSaveError('');
+              setSaveBadgeText('Saved ✓');
+            })
+            .catch((error) => {
+              console.error('Saving account data failed:', error);
+              setSaveError(error.message);
+              setSaveBadgeText('Save Err');
+            });
+        }, 700);
+        return () => clearTimeout(timeoutId);
       }, [
+        isAuthenticated,
+        stateLoaded,
         hasCompletedOnboarding,
         onboardingStep,
         activeTab,
@@ -1662,7 +1922,6 @@
         parentKnows,
         contactMethod,
         parentContact,
-        accountPassword,
         themeId,
         mascotId,
         customMascotName,
@@ -1781,10 +2040,22 @@
         setActiveTab('home');
       };
 
-      const handleResetAllData = () => {
+      const handleResetAllData = async () => {
+        if (!window.confirm('Delete this family account’s onboarding, shops, inventory, and transactions? This cannot be undone.')) {
+          return;
+        }
         try {
-          window.localStorage.removeItem(STORAGE_KEY);
-        } catch (e) {}
+          const response = await fetch('/api/state', {
+            method: 'DELETE',
+            credentials: 'same-origin'
+          });
+          await readApiResponse(response);
+        } catch (error) {
+          console.error('Resetting account data failed:', error);
+          window.alert(error.message);
+          return;
+        }
+        setStateLoaded(false);
         setKidName('');
         setKidAgeGroup('8-9');
         setParentKnows(null);
@@ -1817,6 +2088,52 @@
         setOnboardingStep(1);
         setHasCompletedOnboarding(false);
         setActiveTab('home');
+        setForecastWeather('cloudy');
+        setForecastDow('sun');
+        setSoundMuted(false);
+      };
+
+      const handleOnboardingComplete = async () => {
+        if (isAuthenticated) {
+          setHasCompletedOnboarding(true);
+          setActiveTab('home');
+          setStateLoaded(true);
+          return;
+        }
+        setAuthBusy(true);
+        setAuthError('');
+        const state = buildPersistedState({
+          hasCompletedOnboarding: true,
+          onboardingStep: 6,
+          activeTab: 'home'
+        });
+        try {
+          const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+              action: 'register',
+              contact: parentContact,
+              password: accountPassword,
+              state
+            })
+          });
+          const result = await readApiResponse(response);
+          setAccountContact(result.contact);
+          setIsAuthenticated(true);
+          setAuthStatus('ready');
+          setCreatingAccount(false);
+          setHasCompletedOnboarding(true);
+          setActiveTab('home');
+          setAccountPassword('');
+          setStateLoaded(true);
+        } catch (error) {
+          setAuthError(error.message);
+          setSaveBadgeText('Save Err');
+        } finally {
+          setAuthBusy(false);
+        }
       };
 
       const displayKidName = censorKidSafeText(kidName.trim()) || 'Founder';
@@ -2151,6 +2468,13 @@ Live Shop Data:
           timestamp,
           itemsSummary,
           unitsCount,
+          items: cart.map((item) => ({
+            id: item.id,
+            name: item.name,
+            qty: item.qty,
+            price: item.price,
+            unitCost: item.unitCost
+          })),
           tip: Number(tipAmount || 0),
           total: cartSubtotal,
           profit: Number((cartSubtotal - cartCostTotal).toFixed(2))
@@ -2179,7 +2503,48 @@ Live Shop Data:
         setTimeout(() => setPosBanner(null), 3800);
       };
 
-      if (isLocked && accountPassword) {
+      if (authStatus === 'checking') {
+        return (
+          <main className="min-h-screen bg-[#FFFDF7] flex items-center justify-center">
+            <p className="font-black text-emerald-900">Connecting to Seedling…</p>
+          </main>
+        );
+      }
+
+      if (authStatus === 'error') {
+        return (
+          <main className="min-h-screen bg-[#FFFDF7] flex items-center justify-center p-4">
+            <section className="max-w-md w-full bg-white border-2 border-rose-200 rounded-3xl p-7 space-y-4">
+              <h1 className="text-xl font-black">Seedling could not connect</h1>
+              <p role="alert" className="text-sm text-rose-700">{authError}</p>
+              <p className="text-sm text-slate-600">Check the Neon database setup and start Seedling with its API server.</p>
+              <button onClick={checkSession} className="w-full py-3 rounded-full border-2 border-emerald-700 bg-emerald-500 font-black">
+                Retry connection
+              </button>
+            </section>
+          </main>
+        );
+      }
+
+      if (authStatus === 'signed_out' && !creatingAccount) {
+        return (
+          <AccountAccess
+            onSignIn={handleSignIn}
+            onImport={handleImportLegacy}
+            onCreate={() => {
+              setAuthError('');
+              setCreatingAccount(true);
+              setHasCompletedOnboarding(false);
+              setOnboardingStep(1);
+            }}
+            canImport={Boolean(legacyState?.parentContact && legacyState?.accountPassword)}
+            busy={authBusy}
+            error={authError}
+          />
+        );
+      }
+
+      if (isLocked) {
         return (
           <div className={`min-h-screen ${theme.bg} ${theme.text} flex items-center justify-center p-4`}>
             <div className={`max-w-md w-full ${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-7 text-center space-y-5`}>
@@ -2198,13 +2563,25 @@ Live Shop Data:
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (loginPasswordInput === accountPassword) {
+                  setAuthBusy(true);
+                  fetch('/api/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                      action: 'login',
+                      contact: accountContact,
+                      password: loginPasswordInput
+                    })
+                  })
+                    .then(readApiResponse)
+                    .then(() => {
                     setIsLocked(false);
                     setLoginPasswordInput('');
                     setLoginError('');
-                  } else {
-                    setLoginError('Wrong password! Try again.');
-                  }
+                    })
+                    .catch((error) => setLoginError(error.message))
+                    .finally(() => setAuthBusy(false));
                 }}
                 className="space-y-3"
               >
@@ -2218,6 +2595,7 @@ Live Shop Data:
                 {loginError && <div className="text-xs font-black text-rose-500">{loginError}</div>}
                 <button
                   type="submit"
+                  disabled={authBusy}
                   className={`w-full py-3.5 rounded-full border-2 font-black text-sm cursor-pointer ${theme.primaryBtn}`}
                 >
                   Unlock Shop →
@@ -2266,10 +2644,13 @@ Live Shop Data:
             totalTargetRevenue={totalTargetRevenue}
             dailySalesTarget={dailySalesTarget}
             breakEvenPoint={breakEvenPoint}
-            onComplete={() => {
-              setHasCompletedOnboarding(true);
-              setActiveTab('home');
-            }}
+            onComplete={handleOnboardingComplete}
+            onCancel={creatingAccount ? () => {
+              setCreatingAccount(false);
+              setAuthError('');
+            } : undefined}
+            accountError={authError}
+            isSubmitting={authBusy}
           />
         );
       }
@@ -2282,8 +2663,6 @@ Live Shop Data:
       return (
         <div className={`min-h-screen ${theme.bg} ${theme.text} flex flex-col justify-between transition-colors`}>
           <div>
-            {activeTab !== 'pos' && (
-              <>
             {/* Top Navigation Utility Bar */}
             <header className="max-w-7xl mx-auto px-4 sm:px-6 pt-3 pb-2 flex flex-wrap items-center justify-between gap-2">
               <button
@@ -2293,7 +2672,13 @@ Live Shop Data:
                 <PixelLogo size={38} />
                 <div className="text-left">
                   <div className="font-black text-base leading-none tracking-tight">Seedling</div>
-                  <div className={`text-[10px] font-bold ${theme.mutedText}`}>{saveBadgeText}</div>
+                  <div
+                    className={`text-[10px] font-bold ${saveError ? 'text-rose-600' : theme.mutedText}`}
+                    title={saveError || saveBadgeText}
+                    role={saveError ? 'alert' : undefined}
+                  >
+                    {saveError ? `Save failed: ${saveError}` : saveBadgeText}
+                  </div>
                 </div>
               </button>
 
@@ -2302,10 +2687,10 @@ Live Shop Data:
                 {[
                   { id: 'home', label: '🏡 Home' },
                   { id: 'setup', label: '🎯 Goal & Menu' },
-                  { id: 'coach', label: `🌱 ${assistantDisplayName}` },
+                  { id: 'coach', label: '🌱 AI Coach' },
                   { id: 'pos', label: '🧾 Register' },
                   { id: 'dashboard', label: '📈 Board' }
-                ].filter((tab) => tab.id !== 'pos' || shopOpen).map((tab) => (
+                ].map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
@@ -2358,7 +2743,7 @@ Live Shop Data:
                 >
                   {soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                 </button>
-                {accountPassword && (
+                {isAuthenticated && (
                   <button
                     onClick={() => setIsLocked(true)}
                     className={`px-3 py-1.5 rounded-full border text-xs font-extrabold cursor-pointer ${theme.pillBg}`}
@@ -2371,6 +2756,12 @@ Live Shop Data:
                   className={`px-3 py-1.5 rounded-full border text-xs font-extrabold text-rose-500 cursor-pointer ${theme.pillBg}`}
                 >
                   Reset
+                </button>
+                <button
+                  onClick={handleSignOut}
+                  className={`px-3 py-1.5 rounded-full border text-xs font-extrabold cursor-pointer ${theme.pillBg}`}
+                >
+                  Sign out
                 </button>
               </div>
             </header>
@@ -2427,14 +2818,15 @@ Live Shop Data:
                   <button
                     onClick={() => {
                       if (shopOpen) {
-                        handleCloseShop();
+                        setShopOpen(false);
+                        setShowShiftWrapUp(true);
                       } else {
-                        handleOpenShop();
+                        setShopOpen(true);
                       }
                     }}
                     className="bg-white text-slate-900 px-5 py-3 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.08)] flex items-center gap-2.5 text-sm font-extrabold cursor-pointer hover:scale-[1.02] transition-transform"
                   >
-                    <span>{shopOpen ? 'Close Shop for Today' : 'Open Shop'}</span>
+                    <span>{shopOpen ? 'Close Shop for Today' : 'Reopen Shop'}</span>
                     <span
                       className={`w-3.5 h-3.5 rounded-full ${
                         shopOpen
@@ -2452,10 +2844,10 @@ Live Shop Data:
               {[
                 { id: 'home', label: '🏡 Home' },
                 { id: 'setup', label: '🎯 Goal & Menu' },
-                { id: 'coach', label: `🌱 ${assistantDisplayName}` },
+                { id: 'coach', label: '🌱 AI Coach' },
                 { id: 'pos', label: '🧾 Register' },
                 { id: 'dashboard', label: '📈 Board' }
-              ].filter((tab) => tab.id !== 'pos' || shopOpen).map((tab) => (
+              ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
@@ -2467,8 +2859,6 @@ Live Shop Data:
                 </button>
               ))}
             </div>
-              </>
-            )}
 
             {/* Active Module Content */}
             <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
@@ -2493,10 +2883,11 @@ Live Shop Data:
                   chatMessages={chatMessages}
                   isAiTyping={isAiTyping}
                   onSendChat={handleSendChat}
-                  shopOpen={shopOpen}
                   onNavigate={setActiveTab}
-                  onOpenShop={handleOpenShop}
-                  onCloseShopForToday={handleCloseShop}
+                  onCloseShopForToday={() => {
+                    setShopOpen(false);
+                    setShowShiftWrapUp(true);
+                  }}
                 />
               )}
 
@@ -2530,7 +2921,6 @@ Live Shop Data:
                   theme={theme}
                   activeMascot={activeMascot}
                   assistantDisplayName={assistantDisplayName}
-                  shopOpen={shopOpen}
                   setCustomMascotName={setCustomMascotName}
                   businessName={displayShopName}
                   goalItemName={displayGoalItem}
@@ -2560,12 +2950,12 @@ Live Shop Data:
                       )
                     );
                   }}
-                  onNext={handleOpenShop}
+                  onNext={() => setActiveTab('pos')}
                   onBackHome={() => setActiveTab('home')}
                 />
               )}
 
-              {activeTab === 'pos' && shopOpen && (
+              {activeTab === 'pos' && (
                 <RegisterPOSPage
                   theme={theme}
                   businessName={displayShopName}
@@ -2587,7 +2977,9 @@ Live Shop Data:
                   changeDue={changeDue}
                   onCompleteSale={completeSale}
                   posBanner={posBanner}
-                  onCloseShop={handleCloseShop}
+                  onGoSetup={() => setActiveTab('setup')}
+                  onGoDashboard={() => setActiveTab('dashboard')}
+                  onBackHome={() => setActiveTab('home')}
                 />
               )}
 
@@ -2606,11 +2998,10 @@ Live Shop Data:
                   hasBrokenEven={hasBrokenEven}
                   hasReachedGoal={hasReachedGoal}
                   durationDays={durationDays}
-                  shopOpen={shopOpen}
                   activeDay={activeDay}
                   setActiveDay={setActiveDay}
                   salesLog={salesLog}
-                  onOpenShiftWrapUp={handleCloseShop}
+                  onOpenShiftWrapUp={() => setShowShiftWrapUp(true)}
                   onAddQuickDemoSale={() => {
                     const sampleProd = products[0] || {
                       name: 'Featured Item',
@@ -2633,7 +3024,7 @@ Live Shop Data:
                     ]);
                     setTycoonGems((g) => g + 5);
                   }}
-                  onGoRegister={handleOpenShop}
+                  onGoRegister={() => setActiveTab('pos')}
                   onBackHome={() => setActiveTab('home')}
                 />
               )}
@@ -2659,13 +3050,16 @@ Live Shop Data:
               goalItemName={displayGoalItem}
               activeDay={activeDay}
               salesLog={salesLog}
-              dailySalesTarget={dailySalesTarget}
+              totalRevenueEarned={totalRevenueEarned}
+              netProfitEarned={netProfitEarned}
               shopInsights={shopInsights}
               jarAllocations={jarAllocations}
               setJarAllocations={setJarAllocations}
-              onClose={() => {
+              onClose={() => setShowShiftWrapUp(false)}
+              onStartNextDay={() => {
+                setActiveDay((d) => Math.min(durationDays, d + 1));
+                setShopOpen(true);
                 setShowShiftWrapUp(false);
-                setActiveTab('home');
               }}
             />
           )}
@@ -2674,16 +3068,11 @@ Live Shop Data:
             <TutorialModal
               theme={theme}
               onClose={() => setShowTutorial(false)}
-              onNavigate={(tab) => {
-                setShowTutorial(false);
-                if (tab === 'pos') handleOpenShop();
-                else setActiveTab(tab);
-              }}
+              onNavigate={setActiveTab}
             />
           )}
 
           {/* Footer */}
-          {activeTab !== 'pos' && (
           <footer className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-5 mt-8 border-t border-black/10 text-center space-y-1">
             <p className={`text-xs font-extrabold ${theme.mutedText}`}>
               Seedling — Youth Entrepreneurship & AI Business Coach
@@ -2692,20 +3081,17 @@ Live Shop Data:
               This project is a prototype and is not financial advice.
             </p>
           </footer>
-          )}
 
           {/* Animated Corner Mascot Companion */}
-          {activeTab !== 'pos' && (
-            <FloatingMascotCompanion
-              theme={theme}
-              mascot={activeMascot}
-              assistantDisplayName={assistantDisplayName}
-              kidName={displayKidName}
-              chatMessages={chatMessages}
-              isAiTyping={isAiTyping}
-              onSendChat={handleSendChat}
-            />
-          )}
+          <FloatingMascotCompanion
+            theme={theme}
+            mascot={activeMascot}
+            assistantDisplayName={assistantDisplayName}
+            kidName={displayKidName}
+            chatMessages={chatMessages}
+            isAiTyping={isAiTyping}
+            onSendChat={handleSendChat}
+          />
         </div>
       );
     }
@@ -2733,9 +3119,7 @@ Live Shop Data:
       chatMessages,
       isAiTyping,
       onSendChat,
-      shopOpen,
       onNavigate,
-      onOpenShop,
       onCloseShopForToday
     }) {
       const [isEditingShop, setIsEditingShop] = useState(false);
@@ -2773,7 +3157,7 @@ Live Shop Data:
                   </div>
                 </div>
                 <button
-                  onClick={onOpenShop}
+                  onClick={() => onNavigate('pos')}
                   className={`px-4 py-2 rounded-full border-2 font-black text-xs cursor-pointer ${theme.primaryBtn}`}
                 >
                   Open Shop →
@@ -2804,14 +3188,12 @@ Live Shop Data:
                 >
                   📈 Full Progress Chart
                 </button>
-                {shopOpen && (
-                  <button
-                    onClick={onCloseShopForToday}
-                    className={`py-2.5 rounded-full border font-extrabold text-xs cursor-pointer ${theme.pillBg}`}
-                  >
-                    🌙 Close Shop & Split Jars
-                  </button>
-                )}
+                <button
+                  onClick={onCloseShopForToday}
+                  className={`py-2.5 rounded-full border font-extrabold text-xs cursor-pointer ${theme.pillBg}`}
+                >
+                  🌙 Close Shop & Split Jars
+                </button>
               </div>
             </div>
 
@@ -3222,7 +3604,6 @@ Live Shop Data:
       theme,
       activeMascot,
       assistantDisplayName,
-      shopOpen,
       setCustomMascotName,
       businessName,
       goalItemName,
@@ -3284,15 +3665,13 @@ Live Shop Data:
               </h1>
             </div>
 
-            {shopOpen && (
-              <button
-                onClick={onNext}
-                className={`inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full border-2 font-black text-sm cursor-pointer ${theme.primaryBtn}`}
-              >
-                <span>Open Cash Register</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            )}
+            <button
+              onClick={onNext}
+              className={`inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full border-2 font-black text-sm cursor-pointer ${theme.primaryBtn}`}
+            >
+              <span>Open Cash Register</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
@@ -3589,7 +3968,9 @@ Live Shop Data:
       changeDue,
       onCompleteSale,
       posBanner,
-      onCloseShop
+      onGoSetup,
+      onGoDashboard,
+      onBackHome
     }) {
       const [showQuickAdd, setShowQuickAdd] = useState(false);
       const [quickName, setQuickName] = useState('');
@@ -3642,6 +4023,13 @@ Live Shop Data:
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
+              <button
+                onClick={onBackHome}
+                className={`inline-flex items-center gap-1.5 text-xs font-extrabold px-3 py-1 rounded-full border mb-2 cursor-pointer ${theme.pillBg}`}
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Home Hub</span>
+              </button>
               <h1 className="text-2xl sm:text-3xl font-black">{businessName} — Cash Register</h1>
             </div>
 
@@ -3651,13 +4039,6 @@ Live Shop Data:
                   🏅 Bundle Master Unlocked!
                 </span>
               )}
-              <button
-                type="button"
-                onClick={onCloseShop}
-                className={`px-4 py-2 rounded-full border-2 text-xs font-black cursor-pointer ${theme.secondaryBtn}`}
-              >
-                🌙 Close Shop & View Summary
-              </button>
               <button
                 type="button"
                 onClick={() => setShowQuickAdd(!showQuickAdd)}
@@ -3725,9 +4106,12 @@ Live Shop Data:
                   <div className={`p-8 rounded-2xl border-2 border-dashed text-center space-y-2 ${theme.innerCream}`}>
                     <div className="text-3xl">🛍️</div>
                     <div className="font-black text-sm">No Products in Register Yet</div>
-                    <p className={`text-xs font-bold ${theme.mutedText}`}>
-                      Close the shop to return to the menu and add products.
-                    </p>
+                    <button
+                      onClick={onGoSetup}
+                      className={`px-4 py-2 rounded-full border-2 font-black text-xs cursor-pointer ${theme.primaryBtn}`}
+                    >
+                      + Add Products in Menu Builder
+                    </button>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -3962,6 +4346,12 @@ Live Shop Data:
                     <span>Checkout (+${cartSubtotal.toFixed(2)})</span>
                   </button>
 
+                  <button
+                    onClick={onGoDashboard}
+                    className={`w-full py-2.5 rounded-full border font-extrabold text-xs cursor-pointer ${theme.pillBg}`}
+                  >
+                    View Tycoon Progress Board →
+                  </button>
                 </div>
               </div>
             </div>
@@ -3984,7 +4374,6 @@ Live Shop Data:
       breakEvenPoint,
       totalRevenueEarned,
       netProfitEarned,
-      shopOpen,
       hasBrokenEven,
       hasReachedGoal,
       durationDays,
@@ -4058,23 +4447,19 @@ Live Shop Data:
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {shopOpen && (
-                <button
-                  onClick={onOpenShiftWrapUp}
-                  className={`inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full border-2 font-black text-xs cursor-pointer ${theme.secondaryBtn}`}
-                >
-                  <span>🌙 Close Shop & Split Profit Jars</span>
-                </button>
-              )}
-              {shopOpen && (
-                <button
-                  onClick={onGoRegister}
-                  className={`inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full border-2 font-black text-xs cursor-pointer ${theme.primaryBtn}`}
-                >
-                  <ScanBarcode className="w-4 h-4" />
-                  <span>Cash Register</span>
-                </button>
-              )}
+              <button
+                onClick={onOpenShiftWrapUp}
+                className={`inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full border-2 font-black text-xs cursor-pointer ${theme.secondaryBtn}`}
+              >
+                <span>🌙 Close Shop & Split Profit Jars</span>
+              </button>
+              <button
+                onClick={onGoRegister}
+                className={`inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full border-2 font-black text-xs cursor-pointer ${theme.primaryBtn}`}
+              >
+                <ScanBarcode className="w-4 h-4" />
+                <span>Cash Register</span>
+              </button>
             </div>
           </div>
 
@@ -4331,43 +4716,41 @@ Live Shop Data:
       goalItemName,
       activeDay,
       salesLog,
-      dailySalesTarget,
+      totalRevenueEarned,
+      netProfitEarned,
       shopInsights,
       jarAllocations,
       setJarAllocations,
-      onClose
+      onClose,
+      onStartNextDay
     }) {
       const todaySales = salesLog.filter((tx) => tx.day === activeDay);
       const todayRevenue = Number(todaySales.reduce((s, t) => s + t.total, 0).toFixed(2));
-      const todayTips = Number(todaySales.reduce((sum, tx) => sum + (tx.tip || 0), 0).toFixed(2));
-      const todayTipCount = todaySales.filter((tx) => tx.tip > 0).length;
-      const todayProfit = Number(todaySales.reduce((sum, tx) => sum + (tx.profit || 0), 0).toFixed(2));
       const bestItemName =
         todaySales.length > 0
           ? todaySales[0].itemsSummary.replace(/^\d+x\s*/, '').split(',')[0]
           : 'Your Featured Item';
 
-      const splittableMoney = Math.max(0, todayProfit + todayTips);
+      const splittableMoney = Math.max(0, netProfitEarned > 0 ? netProfitEarned : totalRevenueEarned);
       const goalDollars = Number(((splittableMoney * jarAllocations.goal) / 100).toFixed(2));
       const suppliesDollars = Number(((splittableMoney * jarAllocations.supplies) / 100).toFixed(2));
       const charityDollars = Number(((splittableMoney * jarAllocations.charity) / 100).toFixed(2));
 
-      const updateJarAllocation = (targetJar, requestedValue) => {
-        const value = Math.max(0, Math.min(100, Math.round(Number(requestedValue) || 0)));
+      const adjustJar = (targetJar) => {
         setJarAllocations((prev) => {
-          const otherJars = ['goal', 'supplies', 'charity'].filter((jar) => jar !== targetJar);
-          const [firstOther, secondOther] = otherJars;
-          const remaining = 100 - value;
-          const otherTotal = prev[firstOther] + prev[secondOther];
-          const firstShare = otherTotal > 0 ? prev[firstOther] / otherTotal : 0.5;
-          const firstValue = Math.round(remaining * firstShare);
-
-          return {
-            ...prev,
-            [targetJar]: value,
-            [firstOther]: firstValue,
-            [secondOther]: remaining - firstValue
-          };
+          if (targetJar === 'goal') {
+            const nextGoal = Math.min(80, prev.goal + 10);
+            const rem = 100 - nextGoal;
+            return { goal: nextGoal, supplies: Math.round(rem * 0.67), charity: 100 - nextGoal - Math.round(rem * 0.67) };
+          }
+          if (targetJar === 'supplies') {
+            const nextSup = Math.min(60, prev.supplies + 10);
+            const nextGoal = Math.max(20, 100 - nextSup - prev.charity);
+            return { goal: nextGoal, supplies: nextSup, charity: 100 - nextGoal - nextSup };
+          }
+          const nextChar = Math.min(40, prev.charity + 10);
+          const nextGoal = Math.max(20, 100 - prev.supplies - nextChar);
+          return { goal: nextGoal, supplies: prev.supplies, charity: nextChar };
         });
       };
 
@@ -4398,49 +4781,32 @@ Live Shop Data:
               </button>
             </div>
 
-            <div className={`p-4 rounded-2xl border ${theme.innerCream} space-y-3 text-sm`}>
+            <div className={`p-4 rounded-2xl border ${theme.innerCream} space-y-2 text-sm`}>
               <div className="font-black text-emerald-500 text-xs uppercase">
-                {assistantDisplayName}’s Shift Summary
+                {assistantDisplayName}’s 3-Bullet Shift Summary
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
-                <div className={`p-3 rounded-xl border ${theme.card}`}>
-                  <div className="text-[11px] font-extrabold uppercase">Tips</div>
-                  <div className="text-lg font-black text-amber-500">${todayTips.toFixed(2)}</div>
-                  <div className={`text-[10px] font-bold ${theme.mutedText}`}>
-                    {todayTipCount} tip{todayTipCount === 1 ? '' : 's'}
-                  </div>
-                </div>
-                <div className={`p-3 rounded-xl border ${theme.card}`}>
-                  <div className="text-[11px] font-extrabold uppercase">Tomorrow’s Goal</div>
-                  <div className="text-lg font-black text-sky-500">${dailySalesTarget.toFixed(2)}</div>
-                  <div className={`text-[10px] font-bold ${theme.mutedText}`}>
-                    About {shopInsights.unitsNeededPerDayForGoal} items for {goalItemName}
-                  </div>
-                </div>
-                <div className={`p-3 rounded-xl border ${theme.card}`}>
-                  <div className="text-[11px] font-extrabold uppercase">Profit Made Today</div>
-                  <div className={`text-lg font-black ${todayProfit >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                    ${todayProfit.toFixed(2)}
-                  </div>
-                  <div className={`text-[10px] font-bold ${theme.mutedText}`}>
-                    {todaySales.length} sale{todaySales.length === 1 ? '' : 's'} • ${todayRevenue.toFixed(2)} sales
-                  </div>
-                </div>
-              </div>
-              <p className={`text-xs font-bold ${theme.mutedText}`}>
-                ⭐ Top seller today: {bestItemName} ({todaySales.length} orders). Tomorrow, aim for $
-                {dailySalesTarget.toFixed(2)} in sales to keep saving for {goalItemName}.
-              </p>
+              <ul className="space-y-1.5 font-bold text-xs sm:text-sm">
+                <li>
+                  ⭐ <strong>Top Seller Today:</strong> {bestItemName} ({todaySales.length} orders logged)
+                </li>
+                <li>
+                  💰 <strong>Session Revenue & Profit:</strong> Earned ${todayRevenue.toFixed(2)} today (
+                  {netProfitEarned >= 0
+                    ? `+$${netProfitEarned.toFixed(2)} net profit!`
+                    : `$${Math.abs(netProfitEarned).toFixed(2)} to break-even`}
+                  )
+                </li>
+                <li>
+                  🌱 <strong>Tomorrow’s Shop Estimate:</strong> Aim for{' '}
+                  <strong>{shopInsights.tomorrowPredictedUnits} units</strong> during{' '}
+                  {shopInsights.weatherObj.label} to stay on track for {goalItemName}!
+                </li>
+              </ul>
             </div>
 
             <div className="space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <h3 className="text-base font-black">🪙 Choose Your 3-Jar Savings</h3>
-                  <p className={`text-[11px] font-bold ${theme.mutedText}`}>
-                    Split today’s profit and tips (${splittableMoney.toFixed(2)}). Jar percentages always add up to 100%.
-                  </p>
-                </div>
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-black">🪙 3-Jar Profit Splitter (${splittableMoney.toFixed(2)})</h3>
                 <div className="flex gap-1.5">
                   <button
                     type="button"
@@ -4465,19 +4831,13 @@ Live Shop Data:
                   <div className="font-black text-sm">My Goal ({jarAllocations.goal}%)</div>
                   <div className="text-xl font-black text-emerald-500">${goalDollars.toFixed(2)}</div>
                   <p className={`text-[11px] ${theme.mutedText}`}>For {goalItemName}</p>
-                  <label className="block text-left text-[11px] font-bold">
-                    Save for my goal (%)
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="1"
-                      value={jarAllocations.goal}
-                      onChange={(e) => updateJarAllocation('goal', e.target.value)}
-                      aria-label="Percent to save for my goal"
-                      className={`mt-1 w-full px-3 py-2 rounded-xl border text-sm font-black ${theme.inputBg}`}
-                    />
-                  </label>
+                  <button
+                    type="button"
+                    onClick={() => adjustJar('goal')}
+                    className="w-full py-1.5 rounded-full bg-emerald-500 text-slate-950 font-black text-xs cursor-pointer"
+                  >
+                    + Drop Coin (+10%)
+                  </button>
                 </div>
 
                 <div className={`p-4 rounded-2xl border-2 border-amber-400 ${theme.innerCream} space-y-2`}>
@@ -4485,39 +4845,27 @@ Live Shop Data:
                   <div className="font-black text-sm">Next Supplies ({jarAllocations.supplies}%)</div>
                   <div className="text-xl font-black text-amber-500">${suppliesDollars.toFixed(2)}</div>
                   <p className={`text-[11px] ${theme.mutedText}`}>Restock ingredients</p>
-                  <label className="block text-left text-[11px] font-bold">
-                    Save for supplies (%)
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="1"
-                      value={jarAllocations.supplies}
-                      onChange={(e) => updateJarAllocation('supplies', e.target.value)}
-                      aria-label="Percent to save for supplies"
-                      className={`mt-1 w-full px-3 py-2 rounded-xl border text-sm font-black ${theme.inputBg}`}
-                    />
-                  </label>
+                  <button
+                    type="button"
+                    onClick={() => adjustJar('supplies')}
+                    className="w-full py-1.5 rounded-full bg-amber-400 text-slate-950 font-black text-xs cursor-pointer"
+                  >
+                    + Drop Coin (+10%)
+                  </button>
                 </div>
 
                 <div className={`p-4 rounded-2xl border-2 border-rose-400 ${theme.innerCream} space-y-2`}>
                   <div className="text-3xl">❤️</div>
-                  <div className="font-black text-sm">Give ({jarAllocations.charity}%)</div>
+                  <div className="font-black text-sm">Charity / Give ({jarAllocations.charity}%)</div>
                   <div className="text-xl font-black text-rose-500">${charityDollars.toFixed(2)}</div>
                   <p className={`text-[11px] ${theme.mutedText}`}>Help your community</p>
-                  <label className="block text-left text-[11px] font-bold">
-                    Choose how much to give (%)
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="1"
-                      value={jarAllocations.charity}
-                      onChange={(e) => updateJarAllocation('charity', e.target.value)}
-                      aria-label="Percent to give"
-                      className={`mt-1 w-full px-3 py-2 rounded-xl border text-sm font-black ${theme.inputBg}`}
-                    />
-                  </label>
+                  <button
+                    type="button"
+                    onClick={() => adjustJar('charity')}
+                    className="w-full py-1.5 rounded-full bg-rose-400 text-slate-950 font-black text-xs cursor-pointer"
+                  >
+                    + Drop Coin (+10%)
+                  </button>
                 </div>
               </div>
             </div>
@@ -4529,6 +4877,13 @@ Live Shop Data:
                 className={`w-full sm:w-auto px-5 py-2.5 rounded-full border font-extrabold text-xs cursor-pointer ${theme.pillBg}`}
               >
                 Save & Close
+              </button>
+              <button
+                type="button"
+                onClick={onStartNextDay}
+                className={`w-full sm:w-auto px-6 py-2.5 rounded-full border-2 font-black text-xs cursor-pointer ${theme.primaryBtn}`}
+              >
+                Start Next Selling Day →
               </button>
             </div>
           </div>
