@@ -3,51 +3,40 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="canonical" href="https://seedling-lac.vercel.app/" />
-  <title>Seedling — Kid Entrepreneurship & AI Demand Forecaster</title>
-  <!-- Tailwind CSS CDN -->
+  <title>Seedling — Youth Entrepreneurship & AI Business Coach</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif']
-          }
-        }
-      }
-    };
-  </script>
-  <!-- Google Font: Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
-  <!-- React 18 & Babel Standalone -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
-    * { box-sizing: border-box; }
     body {
-      margin: 0;
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      -webkit-font-smoothing: antialiased;
+      font-family: 'Inter', sans-serif;
+    }
+    .seedling-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .seedling-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .seedling-scroll::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.35);
+      border-radius: 9999px;
     }
   </style>
 </head>
-<body class="bg-[#FFFDF7] text-slate-900">
+<body class="antialiased selection:bg-emerald-300 selection:text-slate-950">
   <div id="root"></div>
 
   <script type="text/babel">
     const { useState, useEffect, useMemo, useRef } = React;
 
     // ============================================================================
-    // SHARED CONSTANTS, INLINE ICONS & KID-SAFE FILTER
+    // INLINE KID-SAFE SVG ICONS (ZERO EXTERNAL ICON OBJECT CRASHES)
     // ============================================================================
-    const SITE_BASE_URL = 'https://seedling-lac.vercel.app';
-    const OLLAMA_MODEL_NAME = 'gpt-oss:120b-cloud';
-    const STORAGE_KEY = 'seedling_kidbiz_state_v1';
-
     const IconBase = ({ className = 'w-4 h-4', children }) => (
       <svg
         viewBox="0 0 24 24"
@@ -151,6 +140,11 @@
       </IconBase>
     );
 
+    // ============================================================================
+    // CONSTANTS: THEMES, VEGGIE & BUDDY MASCOTS, WEATHER & DAY OPTIONS
+    // ============================================================================
+    const STORAGE_KEY = 'seedling_kidbiz_state_v2';
+
     const THEMES = {
       mint: {
         id: 'mint',
@@ -235,34 +229,30 @@
     };
 
     const MASCOTS = [
-      { id: 'parrot', shortName: 'Penny Parrot', name: 'Penny • AI Business Coach', vibe: 'Chatty & Clever' },
-      { id: 'sprout', shortName: 'Pip Sprout', name: 'Pip • AI Business Coach', vibe: 'Sunny & Growing' },
-      { id: 'carrot', shortName: 'Crunchie', name: 'Crunchie • AI Business Coach', vibe: 'Fast & Energetic' },
-      { id: 'broccoli', shortName: 'Broc', name: 'Broc • AI Business Coach', vibe: 'Smart Planner' },
-      { id: 'kiwi', shortName: 'Kiki Kiwi', name: 'Kiki • AI Business Coach', vibe: 'Sweet & Creative' },
-      { id: 'tomato', shortName: 'Toma', name: 'Toma • AI Business Coach', vibe: 'Bold & Cheerful' }
-    ];
-
-    const CATEGORIES = [
-      { id: 'lemonade', label: 'Drinks & Lemonade', emoji: '🍋', avgUnitCost: 0.45 },
-      { id: 'bakery', label: 'Bake Sale & Treats', emoji: '🍪', avgUnitCost: 0.55 },
-      { id: 'crafts', label: 'Bracelets & Slime', emoji: '✨', avgUnitCost: 0.65 },
-      { id: 'toys', label: 'Art, Cards & Toys', emoji: '🎨', avgUnitCost: 0.85 }
+      { id: 'sprout', shortName: 'Pip Sprout', name: 'Pip the Garden Sprout', vibe: 'Sunny & Growing' },
+      { id: 'carrot', shortName: 'Crunchie', name: 'Crunchie the Carrot', vibe: 'Fast & Energetic' },
+      { id: 'broccoli', shortName: 'Broc', name: 'Broc the Broccoli', vibe: 'Smart Planner' },
+      { id: 'kiwi', shortName: 'Kiki Kiwi', name: 'Kiki the Kiwi', vibe: 'Sweet & Creative' },
+      { id: 'tomato', shortName: 'Toma', name: 'Toma the Tomato', vibe: 'Bold & Cheerful' },
+      { id: 'parrot', shortName: 'Penny Parrot', name: 'Penny the Parrot', vibe: 'Chatty & Clever' }
     ];
 
     const WEATHER_OPTIONS = [
       { id: 'sunny', label: '☀️ Sunny & Warm', demandMult: 1.25 },
-      { id: 'cloudy', label: '⛅ Partly Cloudy', demandMult: 1.0 },
-      { id: 'rainy', label: '🌧️ Rainy / Cool', demandMult: 0.65 }
+      { id: 'cloudy', label: '⛅ Mild & Cloudy', demandMult: 1.0 },
+      { id: 'rainy', label: '🌧️ Cool / Rainy', demandMult: 0.7 }
     ];
 
     const DAY_OF_WEEK_OPTIONS = [
-      { id: 'sat', label: 'Saturday (Weekend)', demandMult: 1.3 },
+      { id: 'sat', label: 'Saturday (Weekend)', demandMult: 1.25 },
       { id: 'sun', label: 'Sunday (Weekend)', demandMult: 1.2 },
       { id: 'fri', label: 'Friday Afternoon', demandMult: 1.05 },
-      { id: 'weekday', label: 'School Weekday', demandMult: 0.82 }
+      { id: 'weekday', label: 'School Weekday', demandMult: 0.85 }
     ];
 
+    // ============================================================================
+    // KID-SAFE PROFANITY & WORKAROUND CENSOR FILTER
+    // ============================================================================
     const BANNED_TERMS = [
       'fuck', 'shit', 'bitch', 'asshole', 'bastard', 'damn', 'crap', 'dick', 'cock',
       'pussy', 'cunt', 'whore', 'slut', 'fag', 'faggot', 'nigger', 'nigga', 'retard',
@@ -303,7 +293,9 @@
         const collapsed = w.replace(/(.)\1{2,}/g, '$1');
         if (BANNED_TERMS.includes(w) || BANNED_TERMS.includes(collapsed)) return true;
         for (const bad of BANNED_TERMS) {
-          if (bad.length >= 4 && (w.includes(bad) || collapsed.includes(bad))) return true;
+          if (bad.length >= 4 && (w.includes(bad) || collapsed.includes(bad))) {
+            return true;
+          }
         }
       }
       const squished = normalized.replace(/\s+/g, '');
@@ -326,290 +318,179 @@
         .join('');
     }
 
+    // ============================================================================
+    // REALISTIC STUDIO-SHADED GLOBAL INVENTORY STICKER GENERATOR
+    // ============================================================================
     function buildCustomCartoonStickerDataUrl(itemName) {
       const lower = (itemName || 'Item').toLowerCase();
-      let bgTop = '#E0F2FE';
+      let bgTop = '#F0F9FF';
       let bgBot = '#FEF3C7';
       let detailSvg = '';
 
-      // 1. Boba / Bubble Tea / Matcha / Iced Latte
-      if (/boba|bubble tea|milk tea|taro|matcha|thai tea|iced tea|latte/.test(lower)) {
-        const isMatcha = /matcha/.test(lower);
-        const isTaro = /taro/.test(lower);
-        const drinkFill = isMatcha ? '#4ADE80' : isTaro ? '#C084FC' : '#D97706';
-        const drinkLight = isMatcha ? '#BBF7D0' : isTaro ? '#F3E8FF' : '#FDE68A';
-        bgTop = '#F0FDF4';
-        bgBot = '#FEF3C7';
+      if (lower.includes('boba') || lower.includes('bubble tea') || lower.includes('milk tea') || lower.includes('taro')) {
+        bgTop = '#FDF2F8';
+        bgBot = '#FDE68A';
+        const teaColor = lower.includes('taro') ? '#C084FC' : lower.includes('matcha') ? '#86EFAC' : '#D99B66';
         detailSvg = `
           <defs>
-            <linearGradient id="bobaGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="${drinkLight}"/>
-              <stop offset="100%" stop-color="${drinkFill}"/>
+            <linearGradient id="teaGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="${teaColor}"/>
+              <stop offset="100%" stop-color="#92400E" stop-opacity="0.75"/>
             </linearGradient>
           </defs>
-          <rect x="66" y="14" width="9" height="44" rx="4" transform="rotate(14 66 14)" fill="#1E293B"/>
-          <path d="M38 38 L82 38 L75 95 C74 99, 46 99, 45 95 Z" fill="url(#bobaGrad)" />
-          <path d="M40 50 L80 50 L75 95 C74 99, 46 99, 45 95 Z" fill="${drinkFill}" opacity="0.55"/>
-          <ellipse cx="60" cy="38" rx="23" ry="5.5" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
-          <ellipse cx="60" cy="36" rx="20" ry="4" fill="#F8FAFC"/>
-          <circle cx="50" cy="86" r="4.2" fill="#1E1B4B"/>
-          <circle cx="60" cy="88" r="4.2" fill="#1E1B4B"/>
-          <circle cx="70" cy="85" r="4.2" fill="#1E1B4B"/>
-          <circle cx="55" cy="79" r="3.8" fill="#1E1B4B"/>
-          <circle cx="66" cy="78" r="3.8" fill="#1E1B4B"/>
-          <rect x="44" y="44" width="5" height="36" rx="2.5" fill="#FFFFFF" opacity="0.55"/>
+          <ellipse cx="60" cy="99" rx="24" ry="5" fill="#0F172A" opacity="0.14"/>
+          <rect x="65" y="14" width="9" height="44" rx="4" transform="rotate(14 65 14)" fill="#1E293B"/>
+          <path d="M36 38 L84 38 L77 94 C76 97 73 98 60 98 C47 98 44 97 43 94 Z" fill="url(#teaGrad)"/>
+          <path d="M40 42 L46 42 L44 90 L39 90 Z" fill="#FFFFFF" opacity="0.35"/>
+          <ellipse cx="60" cy="38" rx="25" ry="5" fill="#F8FAFC"/>
+          <circle cx="48" cy="88" r="4.5" fill="#271408"/>
+          <circle cx="59" cy="90" r="4.5" fill="#271408"/>
+          <circle cx="70" cy="87" r="4.5" fill="#271408"/>
+          <circle cx="53" cy="80" r="4.2" fill="#3B1F0E"/>
+          <circle cx="65" cy="80" r="4.2" fill="#3B1F0E"/>
         `;
-      }
-      // 2. Hot Cocoa / Chai / Coffee / Warm Tea / Champurrado / Horchata
-      else if (/cocoa|hot chocolate|coffee|tea|chai|champurrado|cider|horchata|atole/.test(lower)) {
-        const isHorchata = /horchata/.test(lower);
-        bgTop = '#FFEDD5';
+      } else if (lower.includes('matcha') || lower.includes('green tea')) {
+        bgTop = '#ECFDF5';
+        bgBot = '#FEF9C3';
+        detailSvg = `
+          <ellipse cx="60" cy="97" rx="25" ry="5" fill="#064E3B" opacity="0.15"/>
+          <path d="M35 38 L85 38 L78 92 C77 96 43 96 42 92 Z" fill="#4ADE80"/>
+          <path d="M37 46 L83 46 L78 92 C77 96 43 96 42 92 Z" fill="#16A34A"/>
+          <ellipse cx="60" cy="38" rx="25" ry="5.5" fill="#DCFCE7"/>
+          <path d="M52 28 Q55 20 52 14" stroke="#86EFAC" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <path d="M66 28 Q69 20 66 14" stroke="#86EFAC" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        `;
+      } else if (lower.includes('chai') || lower.includes('cocoa') || lower.includes('hot chocolate') || lower.includes('coffee') || lower.includes('latte')) {
+        bgTop = '#FEF3C7';
+        bgBot = '#FFEDD5';
+        detailSvg = `
+          <ellipse cx="58" cy="96" rx="26" ry="5" fill="#451A03" opacity="0.16"/>
+          <path d="M80 48 C94 48, 94 74, 80 74" stroke="#F8FAFC" stroke-width="7" fill="none" stroke-linecap="round"/>
+          <path d="M34 42 L82 42 L78 86 C77 93 39 93 38 86 Z" fill="#FFFFFF"/>
+          <ellipse cx="58" cy="43" rx="23" ry="6" fill="#78350F"/>
+          <ellipse cx="54" cy="43" rx="7" ry="3.5" fill="#FFFBEB"/>
+          <ellipse cx="65" cy="44" rx="6" ry="3" fill="#FEF3C7"/>
+          <path d="M48 30 Q52 22 48 15" stroke="#D97706" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.6"/>
+          <path d="M62 28 Q66 20 62 13" stroke="#D97706" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.6"/>
+        `;
+      } else if (lower.includes('horchata') || lower.includes('agua') || lower.includes('jamaica') || lower.includes('mango') || lower.includes('mangonada')) {
+        bgTop = '#FFF7ED';
+        bgBot = '#FEF08A';
+        const drinkFill = lower.includes('jamaica') ? '#BE123C' : lower.includes('mango') ? '#F59E0B' : '#F5EFE6';
+        detailSvg = `
+          <ellipse cx="60" cy="98" rx="23" ry="5" fill="#78350F" opacity="0.15"/>
+          <line x1="72" y1="16" x2="63" y2="44" stroke="#E11D48" stroke-width="5" stroke-linecap="round"/>
+          <path d="M38 36 L82 36 L76 93 L44 93 Z" fill="${drinkFill}"/>
+          <rect x="46" y="44" width="11" height="11" rx="2.5" transform="rotate(12 46 44)" fill="#FFFFFF" opacity="0.65"/>
+          <rect x="61" y="50" width="10" height="10" rx="2.5" transform="rotate(-10 61 50)" fill="#FFFFFF" opacity="0.55"/>
+          <line x1="48" y1="36" x2="72" y2="36" stroke="#92400E" stroke-width="3.5" stroke-linecap="round"/>
+        `;
+      } else if (lower.includes('empanada') || lower.includes('samosa') || lower.includes('tamale') || lower.includes('arepa') || lower.includes('dumpling') || lower.includes('bao')) {
+        bgTop = '#FFFBEB';
+        bgBot = '#FFEDD5';
+        detailSvg = `
+          <ellipse cx="60" cy="92" rx="34" ry="7" fill="#78350F" opacity="0.16"/>
+          <path d="M24 72 C24 44, 96 44, 96 72 C96 82, 82 86, 60 86 C38 86, 24 82, 24 72 Z" fill="#F59E0B"/>
+          <path d="M26 70 C28 52, 92 52, 94 70" stroke="#D97706" stroke-width="4" fill="none" stroke-dasharray="6 4" stroke-linecap="round"/>
+          <ellipse cx="52" cy="60" rx="14" ry="5" fill="#FDE68A" opacity="0.65"/>
+        `;
+      } else if (lower.includes('churro') || lower.includes('pretzel')) {
+        bgTop = '#FEF3C7';
         bgBot = '#FDE68A';
         detailSvg = `
-          <defs>
-            <linearGradient id="mugGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#FB7185"/>
-              <stop offset="100%" stop-color="#BE123C"/>
-            </linearGradient>
-          </defs>
-          ${!isHorchata ? `
-            <path d="M47 26 Q44 19 48 13" stroke="#FFFFFF" stroke-width="3.5" fill="none" stroke-linecap="round" opacity="0.85"/>
-            <path d="M60 24 Q57 17 61 11" stroke="#FFFFFF" stroke-width="3.5" fill="none" stroke-linecap="round" opacity="0.85"/>
-            <path d="M73 26 Q70 19 74 13" stroke="#FFFFFF" stroke-width="3.5" fill="none" stroke-linecap="round" opacity="0.85"/>
-          ` : ''}
-          <path d="M84 48 H94 C101 48, 101 70, 94 70 H84" stroke="#BE123C" stroke-width="6" fill="none" stroke-linecap="round"/>
-          <rect x="33" y="38" width="53" height="53" rx="15" fill="url(#mugGrad)"/>
-          <ellipse cx="59.5" cy="42" rx="23" ry="6.5" fill="${isHorchata ? '#FEF3C7' : '#5C2D16'}"/>
-          <rect x="40" y="48" width="5" height="34" rx="2.5" fill="#FFFFFF" opacity="0.35"/>
-          ${isHorchata
-            ? `<line x1="50" y1="42" x2="70" y2="41" stroke="#92400E" stroke-width="3" stroke-linecap="round"/>`
-            : `<rect x="48" y="38" width="9" height="7" rx="3" fill="#FFFFFF"/>
-               <rect x="61" y="39" width="9" height="7" rx="3" fill="#FFFBEB"/>`
-          }
+          <ellipse cx="60" cy="95" rx="30" ry="6" fill="#78350F" opacity="0.16"/>
+          <rect x="36" y="28" width="13" height="62" rx="6.5" transform="rotate(-16 36 28)" fill="#D97706"/>
+          <rect x="54" y="24" width="13" height="64" rx="6.5" fill="#B45309"/>
+          <rect x="70" y="30" width="13" height="60" rx="6.5" transform="rotate(15 70 30)" fill="#F59E0B"/>
         `;
-      }
-      // 3. Lemonade / Agua Fresca / Mangonada / Juice / Smoothie
-      else if (/lemon|agua fresca|mangonada|juice|smoothie|drink|punch|soda/.test(lower)) {
-        const isMango = /mango/.test(lower);
-        const isBerry = /berry|strawberry|watermelon|jamaica|hibiscus/.test(lower);
-        const topCol = isMango ? '#FDE047' : isBerry ? '#FB7185' : '#FEF08A';
-        const botCol = isMango ? '#F97316' : isBerry ? '#E11D48' : '#EAB308';
+      } else if (lower.includes('mochi') || lower.includes('macaron') || lower.includes('gelato') || lower.includes('ice cream')) {
+        bgTop = '#FDF2F8';
+        bgBot = '#ECFDF5';
+        detailSvg = `
+          <ellipse cx="60" cy="92" rx="32" ry="6" fill="#0F172A" opacity="0.12"/>
+          <ellipse cx="46" cy="72" rx="22" ry="15" fill="#F472B6"/>
+          <ellipse cx="42" cy="66" rx="9" ry="4" fill="#FBCFE8" opacity="0.7"/>
+          <ellipse cx="74" cy="74" rx="22" ry="15" fill="#4ADE80"/>
+          <ellipse cx="70" cy="68" rx="9" ry="4" fill="#DCFCE7" opacity="0.7"/>
+          <ellipse cx="60" cy="52" rx="21" ry="14" fill="#FDE047"/>
+          <ellipse cx="55" cy="46" rx="8" ry="3.5" fill="#FEF9C3" opacity="0.75"/>
+        `;
+      } else if (lower.includes('onigiri') || lower.includes('sushi') || lower.includes('musubi')) {
+        bgTop = '#ECFDF5';
+        bgBot = '#E0F2FE';
+        detailSvg = `
+          <ellipse cx="60" cy="93" rx="30" ry="6" fill="#0F172A" opacity="0.14"/>
+          <path d="M60 28 C74 28, 92 66, 88 80 C84 88, 36 88, 32 80 C28 66, 46 28, 60 28 Z" fill="#FFFFFF"/>
+          <rect x="46" y="64" width="28" height="22" rx="4" fill="#1E293B"/>
+        `;
+      } else if (lower.includes('lemon') || lower.includes('juice') || lower.includes('drink') || lower.includes('soda') || lower.includes('water')) {
         bgTop = '#FEF9C3';
         bgBot = '#DCFCE7';
         detailSvg = `
-          <defs>
-            <linearGradient id="juiceGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="${topCol}"/>
-              <stop offset="100%" stop-color="${botCol}"/>
-            </linearGradient>
-          </defs>
-          <line x1="74" y1="16" x2="62" y2="48" stroke="#F43F5E" stroke-width="5.5" stroke-linecap="round"/>
-          <circle cx="82" cy="36" r="14" fill="#FACC15"/>
-          <circle cx="82" cy="36" r="11" fill="#FEF9C3"/>
-          <path d="M36 36 L84 36 L77 95 C76 98, 44 98, 43 95 Z" fill="#FFFFFF" opacity="0.65"/>
-          <path d="M39 48 L81 48 L76 94 C75 97, 45 97, 44 94 Z" fill="url(#juiceGrad)"/>
-          <rect x="46" y="54" width="11" height="11" rx="3" transform="rotate(12 46 54)" fill="#FFFFFF" opacity="0.65"/>
-          <rect x="61" y="62" width="11" height="11" rx="3" transform="rotate(-15 61 62)" fill="#FFFFFF" opacity="0.65"/>
-          <rect x="43" y="42" width="4.5" height="44" rx="2.2" fill="#FFFFFF" opacity="0.6"/>
+          <ellipse cx="60" cy="97" rx="22" ry="5" fill="#713F12" opacity="0.15"/>
+          <line x1="74" y1="16" x2="63" y2="44" stroke="#F43F5E" stroke-width="5.5" stroke-linecap="round"/>
+          <path d="M38 36 L82 36 L76 93 L44 93 Z" fill="#FEF08A"/>
+          <path d="M40 49 L80 49 L76 93 L44 93 Z" fill="#FACC15"/>
+          <circle cx="81" cy="36" r="13" fill="#FDE047"/>
+          <circle cx="81" cy="36" r="9.5" fill="#FEF9C3"/>
+          <rect x="47" y="54" width="10" height="10" rx="2" transform="rotate(14 47 54)" fill="#FFFFFF" opacity="0.65"/>
         `;
-      }
-      // 4. Empanadas / Samosas / Dumplings / Gyoza / Bao / Arepas / Tamales / Tacos
-      else if (/empanada|samosa|dumpling|gyoza|bao|arepa|tamale|taco|pupusa|patty/.test(lower)) {
-        const isSamosa = /samosa/.test(lower);
-        const isBao = /bao|dumpling|gyoza/.test(lower);
-        bgTop = '#FEF3C7';
-        bgBot = '#FFEDD5';
-        detailSvg = isSamosa
-          ? `
-            <defs>
-              <linearGradient id="pastryGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#FBBF24"/>
-                <stop offset="60%" stop-color="#D97706"/>
-                <stop offset="100%" stop-color="#92400E"/>
-              </linearGradient>
-            </defs>
-            <ellipse cx="60" cy="88" rx="34" ry="7" fill="#78350F" opacity="0.2"/>
-            <path d="M60 24 C66 24, 92 74, 88 81 C84 88, 36 88, 32 81 C28 74, 54 24, 60 24 Z" fill="url(#pastryGrad)"/>
-            <ellipse cx="52" cy="52" rx="6" ry="12" transform="rotate(20 52 52)" fill="#FEF3C7" opacity="0.45"/>
-            <circle cx="66" cy="66" r="2.2" fill="#92400E" opacity="0.5"/>
-            <circle cx="48" cy="72" r="2.5" fill="#92400E" opacity="0.5"/>
-          `
-          : isBao
-          ? `
-            <defs>
-              <radialGradient id="baoGrad" cx="38%" cy="30%" r="70%">
-                <stop offset="0%" stop-color="#FFFFFF"/>
-                <stop offset="75%" stop-color="#F8FAFC"/>
-                <stop offset="100%" stop-color="#E2E8F0"/>
-              </radialGradient>
-            </defs>
-            <ellipse cx="60" cy="86" rx="34" ry="7" fill="#0F172A" opacity="0.15"/>
-            <path d="M24 68 C24 40, 42 30, 60 30 C78 30, 96 40, 96 68 C96 80, 82 84, 60 84 C38 84, 24 80, 24 68 Z" fill="url(#baoGrad)"/>
-            <path d="M60 30 Q54 42 50 48 M60 30 Q60 43 60 49 M60 30 Q66 42 70 48" stroke="#CBD5E1" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-          `
-          : `
-            <defs>
-              <linearGradient id="empGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#FCD34D"/>
-                <stop offset="55%" stop-color="#D97706"/>
-                <stop offset="100%" stop-color="#92400E"/>
-              </linearGradient>
-            </defs>
-            <ellipse cx="60" cy="86" rx="35" ry="7" fill="#78350F" opacity="0.2"/>
-            <path d="M22 72 C22 40, 98 40, 98 72 C98 81, 22 81, 22 72 Z" fill="url(#empGrad)"/>
-            <path d="M24 71 Q32 76 40 71 Q48 76 56 71 Q64 76 72 71 Q80 76 88 71 Q93 74 96 71" stroke="#B45309" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-            <ellipse cx="52" cy="53" rx="14" ry="5" fill="#FEF3C7" opacity="0.45"/>
-          `;
-      }
-      // 5. Churros / Pretzels / Croissants / Pan Dulce / Concha
-      else if (/churro|pretzel|croissant|concha|pan dulce|bread|bagel|donut|doughnut/.test(lower)) {
-        const isPretzel = /pretzel/.test(lower);
-        const isDonut = /donut|doughnut/.test(lower);
-        bgTop = '#FFF7ED';
+      } else if (lower.includes('cookie') || lower.includes('brownie') || lower.includes('cake') || lower.includes('cupcake') || lower.includes('baklava')) {
+        bgTop = '#FFEDD5';
         bgBot = '#FEF3C7';
-        detailSvg = isDonut
-          ? `
-            <circle cx="60" cy="60" r="34" fill="#D97706"/>
-            <path d="M27 56 C27 36, 93 36, 93 56 C93 66, 84 62, 78 66 C72 70, 66 62, 60 66 C54 70, 48 62, 42 66 C36 70, 27 66, 27 56 Z" fill="#F472B6"/>
-            <circle cx="60" cy="60" r="12" fill="#FFF7ED"/>
-            <rect x="42" y="42" width="6" height="2.5" rx="1" transform="rotate(25 42 42)" fill="#FDE047"/>
-            <rect x="70" y="44" width="6" height="2.5" rx="1" transform="rotate(-30 70 44)" fill="#38BDF8"/>
-            <rect x="56" y="36" width="6" height="2.5" rx="1" fill="#FFFFFF"/>
-          `
-          : isPretzel
-          ? `
-            <path d="M36 74 C22 60, 28 34, 48 40 C58 43, 62 56, 60 64 C58 56, 62 43, 72 40 C92 34, 98 60, 84 74 C72 85, 48 64, 36 74 Z" stroke="#92400E" stroke-width="11" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M36 74 C22 60, 28 34, 48 40 C58 43, 62 56, 60 64 C58 56, 62 43, 72 40 C92 34, 98 60, 84 74 C72 85, 48 64, 36 74 Z" stroke="#D97706" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-            <circle cx="42" cy="42" r="2" fill="#FFFFFF"/>
-            <circle cx="78" cy="44" r="2" fill="#FFFFFF"/>
-            <circle cx="34" cy="64" r="2" fill="#FFFFFF"/>
-            <circle cx="84" cy="64" r="2" fill="#FFFFFF"/>
-          `
-          : `
-            <defs>
-              <linearGradient id="churroGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#F59E0B"/>
-                <stop offset="100%" stop-color="#92400E"/>
-              </linearGradient>
-            </defs>
-            <rect x="34" y="24" width="13" height="68" rx="6.5" transform="rotate(18 34 24)" fill="url(#churroGrad)"/>
-            <rect x="56" y="22" width="13" height="68" rx="6.5" transform="rotate(18 56 22)" fill="url(#churroGrad)"/>
-            <rect x="76" y="28" width="13" height="64" rx="6.5" transform="rotate(18 76 28)" fill="url(#churroGrad)"/>
-            <circle cx="45" cy="45" r="1.5" fill="#FEF3C7"/>
-            <circle cx="65" cy="52" r="1.5" fill="#FEF3C7"/>
-            <circle cx="82" cy="58" r="1.5" fill="#FEF3C7"/>
-          `;
-      }
-      // 6. Mochi / Macarons / Onigiri / Sushi / Baklava / Cookies / Brownies / Cupcakes
-      else if (/mochi|macaron|onigiri|sushi|baklava|cookie|brownie|cake|cupcake|pie|tart|sweet/.test(lower)) {
-        const isOnigiri = /onigiri|sushi/.test(lower);
-        const isMacaron = /macaron|mochi/.test(lower);
-        bgTop = '#FDF2F8';
-        bgBot = '#FEF3C7';
-        detailSvg = isOnigiri
-          ? `
-            <path d="M60 24 C70 24, 94 68, 90 80 C86 88, 34 88, 30 80 C26 68, 50 24, 60 24 Z" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2.5"/>
-            <rect x="46" y="62" width="28" height="24" rx="4" fill="#064E3B"/>
-            <circle cx="52" cy="50" r="1.5" fill="#0F172A"/>
-            <circle cx="68" cy="50" r="1.5" fill="#0F172A"/>
-          `
-          : isMacaron
-          ? `
-            <ellipse cx="60" cy="84" rx="32" ry="6" fill="#9D174D" opacity="0.2"/>
-            <path d="M28 54 C28 36, 92 36, 92 54 Z" fill="#F472B6"/>
-            <rect x="27" y="54" width="66" height="10" rx="5" fill="#FFF1F2"/>
-            <path d="M28 64 C28 80, 92 80, 92 64 Z" fill="#EC4899"/>
-            <ellipse cx="48" cy="43" rx="10" ry="3.5" fill="#FFFFFF" opacity="0.45"/>
-          `
-          : `
-            <defs>
-              <radialGradient id="cookieGrad" cx="35%" cy="30%" r="70%">
-                <stop offset="0%" stop-color="#F59E0B"/>
-                <stop offset="65%" stop-color="#B45309"/>
-                <stop offset="100%" stop-color="#78350F"/>
-              </radialGradient>
-            </defs>
-            <ellipse cx="60" cy="92" rx="30" ry="6" fill="#451A03" opacity="0.22"/>
-            <circle cx="60" cy="60" r="34" fill="url(#cookieGrad)"/>
-            <ellipse cx="46" cy="46" rx="6" ry="4.5" fill="#3E1704"/>
-            <ellipse cx="72" cy="49" rx="5.5" ry="4.5" fill="#3E1704"/>
-            <ellipse cx="58" cy="62" rx="6" ry="5" fill="#3E1704"/>
-            <ellipse cx="44" cy="73" rx="5" ry="4" fill="#3E1704"/>
-            <ellipse cx="73" cy="72" rx="5.5" ry="4.5" fill="#3E1704"/>
-            <ellipse cx="46" cy="36" rx="11" ry="4" transform="rotate(-22 46 36)" fill="#FDE68A" opacity="0.4"/>
-          `;
-      }
-      // 7. Ice Cream / Gelato / Paleta / Snow Cone / Popsicle / Kulfi
-      else if (/ice cream|gelato|paleta|snow cone|popsicle|kulfi|sorbet/.test(lower)) {
-        bgTop = '#E0F2FE';
-        bgBot = '#FCE7F3';
         detailSvg = `
-          <polygon points="44,58 76,58 60,98" fill="#D97706"/>
-          <line x1="49" y1="66" x2="67" y2="82" stroke="#92400E" stroke-width="2"/>
-          <line x1="71" y1="66" x2="53" y2="82" stroke="#92400E" stroke-width="2"/>
-          <circle cx="60" cy="48" r="21" fill="#F472B6"/>
-          <circle cx="52" cy="41" r="6" fill="#FBCFE8" opacity="0.6"/>
-          <circle cx="60" cy="25" r="5" fill="#E11D48"/>
+          <ellipse cx="60" cy="95" rx="28" ry="6" fill="#451A03" opacity="0.16"/>
+          <circle cx="60" cy="60" r="32" fill="#D97706"/>
+          <circle cx="57" cy="57" r="29" fill="#F59E0B"/>
+          <circle cx="47" cy="48" r="4.5" fill="#451A03"/>
+          <circle cx="71" cy="51" r="5" fill="#451A03"/>
+          <circle cx="56" cy="73" r="4.5" fill="#451A03"/>
+          <circle cx="69" cy="68" r="3.8" fill="#451A03"/>
+          <circle cx="46" cy="64" r="3.5" fill="#451A03"/>
         `;
-      }
-      // 8. Friendship Bracelets / Beads / Keychains / Slime / Crafts
-      else if (/bracelet|bead|necklace|keychain|ring|slime|craft|sticker|pin/.test(lower)) {
-        const isSlime = /slime/.test(lower);
+      } else if (lower.includes('bracelet') || lower.includes('bead') || lower.includes('ring') || lower.includes('necklace')) {
+        bgTop = '#FCE7F3';
+        bgBot = '#E0E7FF';
+        const colors = ['#F472B6', '#38BDF8', '#FBBF24', '#34D399', '#A78BFA', '#FB7185'];
+        const beads = Array.from({ length: 12 }, (_, i) => {
+          const ang = (i / 12) * Math.PI * 2;
+          const cx = 60 + Math.cos(ang) * 28;
+          const cy = 60 + Math.sin(ang) * 26;
+          return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="7.5" fill="${colors[i % colors.length]}"/>
+                  <circle cx="${(cx - 2).toFixed(1)}" cy="${(cy - 2).toFixed(1)}" r="2.2" fill="#FFFFFF" opacity="0.7"/>`;
+        }).join('');
+        detailSvg = `<ellipse cx="60" cy="94" rx="26" ry="5" fill="#312E81" opacity="0.14"/>` + beads;
+      } else if (lower.includes('slime')) {
         bgTop = '#FAE8FF';
-        bgBot = '#E0F2FE';
-        if (isSlime) {
-          detailSvg = `
-            <ellipse cx="60" cy="86" rx="38" ry="9" fill="#0D9488" opacity="0.25"/>
-            <path d="M24 74 C24 38, 96 38, 96 74 C96 84, 84 86, 78 78 C72 88, 62 88, 58 78 C52 88, 40 86, 36 78 C30 85, 24 82, 24 74 Z" fill="#2DD4BF"/>
-            <ellipse cx="45" cy="52" rx="8" ry="4" transform="rotate(-18 45 52)" fill="#FFFFFF" opacity="0.75"/>
-            <circle cx="72" cy="56" r="3" fill="#F472B6"/>
-            <circle cx="62" cy="64" r="2.5" fill="#FBBF24"/>
-          `;
-        } else {
-          const colors = ['#F43F5E', '#38BDF8', '#FBBF24', '#10B981', '#A855F7', '#FB923C'];
-          const beads = Array.from({ length: 12 }, (_, i) => {
-            const ang = (i / 12) * Math.PI * 2;
-            const cx = 60 + Math.cos(ang) * 29;
-            const cy = 60 + Math.sin(ang) * 27;
-            return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="7.5" fill="${colors[i % colors.length]}"/>
-                    <circle cx="${(cx - 2).toFixed(1)}" cy="${(cy - 2).toFixed(1)}" r="2.2" fill="#FFFFFF" opacity="0.65"/>`;
-          }).join('');
-          detailSvg = `<circle cx="60" cy="60" r="28" fill="none" stroke="#CBD5E1" stroke-width="2.5"/>${beads}`;
-        }
-      }
-      // 9. Realistic Glossy Product Emblem Fallback for any custom item
-      else {
-        const palettes = [
-          ['#38BDF8', '#0284C7'],
-          ['#34D399', '#059669'],
-          ['#FB7185', '#E11D48'],
-          ['#FBBF24', '#D97706'],
-          ['#A78BFA', '#7C3AED']
-        ];
+        bgBot = '#CCFBF1';
+        detailSvg = `
+          <ellipse cx="60" cy="87" rx="36" ry="9" fill="#0D9488" opacity="0.24"/>
+          <path d="M25 74 C25 40, 95 40, 95 74 C95 85, 84 87, 78 78 C72 89, 62 89, 58 78 C52 89, 40 87, 36 78 C30 86, 25 83, 25 74 Z" fill="#2DD4BF"/>
+          <ellipse cx="47" cy="52" rx="8" ry="4" transform="rotate(-18 47 52)" fill="#FFFFFF" opacity="0.75"/>
+          <circle cx="71" cy="57" r="3" fill="#F472B6"/>
+          <circle cx="62" cy="64" r="2.5" fill="#FBBF24"/>
+        `;
+      } else {
+        const palette = ['#38BDF8', '#F472B6', '#34D399', '#FBBF24', '#A78BFA'];
         const hash = itemName.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-        const [c1, c2] = palettes[hash % palettes.length];
+        const mainColor = palette[hash % palette.length];
         const letter = (itemName.trim()[0] || '★').toUpperCase();
         detailSvg = `
-          <defs>
-            <linearGradient id="badgeGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="${c1}"/>
-              <stop offset="100%" stop-color="${c2}"/>
-            </linearGradient>
-          </defs>
-          <circle cx="60" cy="60" r="35" fill="url(#badgeGrad)"/>
-          <ellipse cx="48" cy="42" rx="14" ry="7" transform="rotate(-25 48 42)" fill="#FFFFFF" opacity="0.35"/>
-          <text x="60" y="71" text-anchor="middle" font-family="Inter, sans-serif" font-weight="900" font-size="34" fill="#FFFFFF">${letter}</text>
+          <ellipse cx="60" cy="95" rx="26" ry="5" fill="#0F172A" opacity="0.14"/>
+          <circle cx="60" cy="58" r="32" fill="${mainColor}"/>
+          <circle cx="51" cy="46" r="10" fill="#FFFFFF" opacity="0.28"/>
+          <text x="60" y="68" text-anchor="middle" font-family="Inter, sans-serif" font-weight="900" font-size="28" fill="#FFFFFF">${letter}</text>
         `;
       }
 
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
         <defs>
-          <linearGradient id="bgCard" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stop-color="${bgTop}"/>
             <stop offset="100%" stop-color="${bgBot}"/>
           </linearGradient>
         </defs>
-        <rect width="120" height="120" rx="24" fill="url(#bgCard)"/>
+        <rect width="120" height="120" rx="24" fill="url(#bgGrad)"/>
         ${detailSvg}
       </svg>`;
 
@@ -621,258 +502,207 @@
     }
 
     // ============================================================================
-    // REALISTIC ILLUSTRATED AI ASSISTANT AVATAR & BRAND LOGO
+    // SEEDLING LOGO & REALISTIC 3D-SHADED VEGGIE & BUDDY AVATARS
     // ============================================================================
     function PixelLogo({ size = 40 }) {
       return (
-        <svg width={size} height={size} viewBox="0 0 64 64" className="shrink-0 drop-shadow-xs">
+        <svg width={size} height={size} viewBox="0 0 40 40" className="shrink-0">
           <defs>
-            <linearGradient id="potGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#D97706" />
-              <stop offset="100%" stopColor="#92400E" />
+            <linearGradient id="logoSoil" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#6D4C41" />
+              <stop offset="100%" stopColor="#3E2723" />
             </linearGradient>
-            <linearGradient id="leafLeft" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#A3E635" />
-              <stop offset="100%" stopColor="#15803D" />
-            </linearGradient>
-            <linearGradient id="leafRight" x1="1" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#6EE7B7" />
-              <stop offset="100%" stopColor="#047857" />
+            <linearGradient id="logoLeaf" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#BEF264" />
+              <stop offset="100%" stopColor="#4D7C0F" />
             </linearGradient>
           </defs>
-          <rect width="64" height="64" rx="18" fill="#1E293B" />
-          <circle cx="32" cy="26" r="20" fill="#10B981" opacity="0.16" />
-          <path d="M32 42 C32 34, 32 28, 32 24" stroke="#4ADE80" strokeWidth="4" strokeLinecap="round" />
-          <path d="M32 28 C22 28, 16 20, 18 14 C25 14, 31 20, 32 28 Z" fill="url(#leafLeft)" />
-          <path d="M32 25 C42 25, 48 17, 46 11 C39 11, 33 17, 32 25 Z" fill="url(#leafRight)" />
-          <path d="M21 40 H43 L40 53 C39.5 55, 38 56, 36 56 H28 C26 56, 24.5 55, 24 53 Z" fill="url(#potGrad)" />
-          <rect x="19" y="38" width="26" height="4" rx="2" fill="#F59E0B" />
+          <rect width="40" height="40" rx="12" fill="url(#logoSoil)" />
+          <path d="M20 31 L20 17" stroke="#A3E635" strokeWidth="3.2" strokeLinecap="round" />
+          <path d="M20 19 C12 19, 8 12, 13 9 C17 7, 20 13, 20 19 Z" fill="url(#logoLeaf)" />
+          <path d="M20 17 C28 17, 32 10, 27 7 C23 5, 20 11, 20 17 Z" fill="url(#logoLeaf)" />
+          <ellipse cx="20" cy="32" rx="9" ry="2.6" fill="#A16207" />
         </svg>
       );
     }
 
-    function PixelMascot({ type = 'parrot', size = 56, circular = false, isTalking = false }) {
-      const uid = `veg-${type}`;
-
+    function PixelMascot({ type = 'sprout', size = 56, circular = false, isTalking = false }) {
+      const uid = `${type}-${size}`;
       return (
         <div
           style={{ width: size, height: size }}
-          className={`relative inline-flex items-center justify-center shrink-0 select-none transition-transform duration-200 ${
+          className={`inline-flex items-center justify-center shrink-0 select-none transition-transform duration-200 ${
             circular
-              ? 'rounded-full bg-white border-2 border-emerald-700/25 p-1 shadow-md overflow-hidden'
-              : 'rounded-2xl overflow-hidden'
-          } ${isTalking ? 'scale-105 ring-2 ring-emerald-400' : 'hover:scale-105'}`}
+              ? 'rounded-full bg-gradient-to-b from-white to-emerald-50 border-2 border-emerald-600/30 p-1 shadow-md overflow-hidden'
+              : ''
+          } ${isTalking ? 'scale-105' : 'hover:scale-105'}`}
         >
-          <svg viewBox="0 0 100 100" className="w-full h-full">
+          <svg viewBox="0 0 64 64" className="w-full h-full">
             <defs>
-              <radialGradient id={`${uid}-glow`} cx="35%" cy="25%" r="80%">
-                <stop offset="0%" stopColor="#FFFFFF" />
-                <stop offset="100%" stopColor="#ECFDF5" />
-              </radialGradient>
-              <linearGradient id={`${uid}-carrot`} x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#FB923C" />
-                <stop offset="55%" stopColor="#F97316" />
-                <stop offset="100%" stopColor="#C2410C" />
-              </linearGradient>
-              <radialGradient id={`${uid}-tomato`} cx="35%" cy="30%" r="70%">
-                <stop offset="0%" stopColor="#FCA5A5" />
-                <stop offset="35%" stopColor="#EF4444" />
-                <stop offset="100%" stopColor="#991B1B" />
-              </radialGradient>
-              <radialGradient id={`${uid}-sprout`} cx="35%" cy="30%" r="70%">
+              <radialGradient id={`sproutBody-${uid}`} cx="35%" cy="30%" r="70%">
                 <stop offset="0%" stopColor="#FEF08A" />
-                <stop offset="50%" stopColor="#A3E635" />
-                <stop offset="100%" stopColor="#4D7C0F" />
+                <stop offset="55%" stopColor="#FACC15" />
+                <stop offset="100%" stopColor="#CA8A04" />
               </radialGradient>
-              <radialGradient id={`${uid}-broc`} cx="35%" cy="25%" r="75%">
-                <stop offset="0%" stopColor="#4ADE80" />
-                <stop offset="60%" stopColor="#16A34A" />
+              <linearGradient id={`leafGrad-${uid}`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#BEF264" />
+                <stop offset="100%" stopColor="#3F6212" />
+              </linearGradient>
+              <radialGradient id={`carrotBody-${uid}`} cx="35%" cy="25%" r="75%">
+                <stop offset="0%" stopColor="#FDBA74" />
+                <stop offset="50%" stopColor="#F97316" />
+                <stop offset="100%" stopColor="#9A3412" />
+              </radialGradient>
+              <radialGradient id={`brocCrown-${uid}`} cx="35%" cy="30%" r="70%">
+                <stop offset="0%" stopColor="#86EFAC" />
+                <stop offset="55%" stopColor="#16A34A" />
                 <stop offset="100%" stopColor="#14532D" />
               </radialGradient>
-              <radialGradient id={`${uid}-kiwi-skin`} cx="35%" cy="30%" r="75%">
-                <stop offset="0%" stopColor="#B45309" />
+              <radialGradient id={`kiwiSkin-${uid}`} cx="35%" cy="30%" r="75%">
+                <stop offset="0%" stopColor="#D97706" />
                 <stop offset="100%" stopColor="#78350F" />
               </radialGradient>
-              <radialGradient id={`${uid}-kiwi-flesh`} cx="40%" cy="35%" r="70%">
-                <stop offset="0%" stopColor="#BEF264" />
-                <stop offset="65%" stopColor="#65A30D" />
-                <stop offset="100%" stopColor="#3F6212" />
+              <radialGradient id={`kiwiFlesh-${uid}`} cx="40%" cy="35%" r="65%">
+                <stop offset="0%" stopColor="#ECFCCB" />
+                <stop offset="45%" stopColor="#A3E635" />
+                <stop offset="100%" stopColor="#4D7C0F" />
               </radialGradient>
-              <linearGradient id={`${uid}-parrot`} x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#34D399" />
-                <stop offset="60%" stopColor="#10B981" />
-                <stop offset="100%" stopColor="#047857" />
-              </linearGradient>
+              <radialGradient id={`tomatoBody-${uid}`} cx="32%" cy="28%" r="72%">
+                <stop offset="0%" stopColor="#FCA5A5" />
+                <stop offset="45%" stopColor="#EF4444" />
+                <stop offset="100%" stopColor="#991B1B" />
+              </radialGradient>
+              <radialGradient id={`parrotBody-${uid}`} cx="35%" cy="30%" r="70%">
+                <stop offset="0%" stopColor="#A7F3D0" />
+                <stop offset="55%" stopColor="#10B981" />
+                <stop offset="100%" stopColor="#065F46" />
+              </radialGradient>
             </defs>
 
-            <circle cx="50" cy="50" r="49" fill={`url(#${uid}-glow)`} />
-            <ellipse cx="50" cy="89" rx="22" ry="5" fill="#0F172A" opacity="0.12" />
-
-            {/* 1. REALISTIC ILLUSTRATED SPROUT */}
             {type === 'sprout' && (
-              <g>
-                {/* Lush Leaves */}
-                <path d="M50 32 C34 14, 14 20, 18 34 C24 44, 42 40, 50 32 Z" fill="#22C55E" />
-                <path d="M48 32 C35 22, 24 25, 20 31" stroke="#BBF7D0" strokeWidth="2" fill="none" strokeLinecap="round" />
-                <path d="M50 30 C66 12, 86 18, 82 32 C76 42, 58 38, 50 30 Z" fill="#16A34A" />
-                <path d="M52 30 C65 20, 76 23, 80 29" stroke="#BBF7D0" strokeWidth="2" fill="none" strokeLinecap="round" />
-                {/* Stem */}
-                <path d="M50 30 L50 46" stroke="#15803D" strokeWidth="5" strokeLinecap="round" />
-                {/* Glossy Seed Body */}
-                <path d="M50 40 C31 40, 24 58, 28 73 C32 84, 68 84, 72 73 C76 58, 69 40, 50 40 Z" fill={`url(#${uid}-sprout)`} />
-                <ellipse cx="38" cy="52" rx="5" ry="9" transform="rotate(-20 38 52)" fill="#FFFFFF" opacity="0.45" />
-                {/* Eyes & Smile */}
-                <circle cx="41" cy="61" r="4.2" fill="#0F172A" />
-                <circle cx="39.6" cy="59.6" r="1.5" fill="#FFFFFF" />
-                <circle cx="59" cy="61" r="4.2" fill="#0F172A" />
-                <circle cx="57.6" cy="59.6" r="1.5" fill="#FFFFFF" />
-                <ellipse cx="35" cy="67" rx="4" ry="2.2" fill="#FB7185" opacity="0.45" />
-                <ellipse cx="65" cy="67" rx="4" ry="2.2" fill="#FB7185" opacity="0.45" />
+              <>
+                <ellipse cx="32" cy="58" rx="14" ry="3.5" fill="#0F172A" opacity="0.16" />
+                <path d="M32 23 L32 13" stroke="#4D7C0F" strokeWidth="3.5" strokeLinecap="round" />
+                <path d="M32 16 C21 16, 15 8, 22 5 C27 3, 32 10, 32 16 Z" fill={`url(#leafGrad-${uid})`} />
+                <path d="M32 14 C43 14, 49 6, 42 3 C37 1, 32 8, 32 14 Z" fill={`url(#leafGrad-${uid})`} />
+                <ellipse cx="32" cy="39" rx="17" ry="16" fill={`url(#sproutBody-${uid})`} />
+                <ellipse cx="25" cy="30" rx="5.5" ry="3" transform="rotate(-20 25 30)" fill="#FFFFFF" opacity="0.55" />
+                <circle cx="26" cy="38" r="2.7" fill="#1E293B" />
+                <circle cx="38" cy="38" r="2.7" fill="#1E293B" />
+                <circle cx="25.2" cy="37.1" r="1" fill="#FFFFFF" />
+                <circle cx="37.2" cy="37.1" r="1" fill="#FFFFFF" />
+                <ellipse cx="21" cy="42" rx="3" ry="1.8" fill="#FB7185" opacity="0.45" />
+                <ellipse cx="43" cy="42" rx="3" ry="1.8" fill="#FB7185" opacity="0.45" />
                 {isTalking ? (
-                  <ellipse cx="50" cy="69" rx="4.5" ry="3.5" fill="#BE123C" />
+                  <ellipse cx="32" cy="45" rx="3.2" ry="3.6" fill="#E11D48" />
                 ) : (
-                  <path d="M44 67 Q50 73 56 67" stroke="#0F172A" strokeWidth="2.8" fill="none" strokeLinecap="round" />
+                  <path d="M28.5 44 Q32 47.5 35.5 44" stroke="#78350F" strokeWidth="2.4" fill="none" strokeLinecap="round" />
                 )}
-              </g>
+              </>
             )}
 
-            {/* 2. REALISTIC ILLUSTRATED CARROT */}
             {type === 'carrot' && (
-              <g>
-                {/* Leafy Green Top */}
-                <path d="M50 28 C42 12, 30 12, 34 24 C38 30, 46 30, 50 28 Z" fill="#16A34A" />
-                <path d="M50 28 C50 8, 58 8, 56 24 C55 29, 52 30, 50 28 Z" fill="#22C55E" />
-                <path d="M50 28 C58 12, 70 14, 66 25 C62 31, 54 30, 50 28 Z" fill="#15803D" />
-                {/* Tapered Textured Carrot Body */}
-                <path d="M31 34 C31 24, 69 24, 69 34 C69 54, 57 86, 50 88 C43 86, 31 54, 31 34 Z" fill={`url(#${uid}-carrot)`} />
-                {/* Natural Carrot Ridges & Specular Highlight */}
-                <path d="M36 42 Q44 44 48 42" stroke="#9A3412" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.45" />
-                <path d="M53 54 Q61 56 64 54" stroke="#9A3412" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.45" />
-                <path d="M40 66 Q47 68 51 66" stroke="#9A3412" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.45" />
-                <ellipse cx="38" cy="40" rx="3.5" ry="10" transform="rotate(-10 38 40)" fill="#FED7AA" opacity="0.55" />
-                {/* Cute Eyes & Smile */}
-                <circle cx="42" cy="47" r="4" fill="#0F172A" />
-                <circle cx="40.8" cy="45.8" r="1.4" fill="#FFFFFF" />
-                <circle cx="58" cy="47" r="4" fill="#0F172A" />
-                <circle cx="56.8" cy="45.8" r="1.4" fill="#FFFFFF" />
+              <>
+                <ellipse cx="32" cy="59" rx="11" ry="3" fill="#0F172A" opacity="0.16" />
+                <path d="M32 17 C26 9, 20 8, 22 14" stroke="#16A34A" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+                <path d="M32 17 C32 7, 32 5, 32 14" stroke="#22C55E" strokeWidth="3.8" fill="none" strokeLinecap="round" />
+                <path d="M32 17 C38 9, 44 8, 42 14" stroke="#15803D" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+                <path d="M18 24 C18 16, 46 16, 46 24 C46 36, 37 56, 32 56 C27 56, 18 36, 18 24 Z" fill={`url(#carrotBody-${uid})`} />
+                <path d="M23 29 L28 29 M36 37 L41 37 M25 44 L29 44" stroke="#9A3412" strokeWidth="1.8" strokeLinecap="round" opacity="0.45" />
+                <ellipse cx="25" cy="23" rx="4.5" ry="2.2" transform="rotate(-15 25 23)" fill="#FFFFFF" opacity="0.45" />
+                <circle cx="27" cy="29" r="2.5" fill="#1E293B" />
+                <circle cx="37" cy="29" r="2.5" fill="#1E293B" />
+                <circle cx="26.2" cy="28.2" r="0.9" fill="#FFFFFF" />
+                <circle cx="36.2" cy="28.2" r="0.9" fill="#FFFFFF" />
                 {isTalking ? (
-                  <ellipse cx="50" cy="56" rx="4" ry="3.2" fill="#7F1D1D" />
+                  <ellipse cx="32" cy="35.5" rx="2.8" ry="3.2" fill="#7C2D12" />
                 ) : (
-                  <path d="M45 54 Q50 59 55 54" stroke="#0F172A" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+                  <path d="M29 34.5 Q32 37.5 35 34.5" stroke="#7C2D12" strokeWidth="2.2" fill="none" strokeLinecap="round" />
                 )}
-              </g>
+              </>
             )}
 
-            {/* 3. REALISTIC ILLUSTRATED BROCCOLI */}
             {type === 'broccoli' && (
-              <g>
-                {/* Thick Tender Stalk */}
-                <path d="M38 52 L34 83 C34 86, 66 86, 66 83 L62 52 Z" fill="#86EFAC" />
-                <path d="M42 56 L40 81" stroke="#4ADE80" strokeWidth="3" strokeLinecap="round" />
-                {/* Lush Floret Crown */}
-                <circle cx="31" cy="43" r="15" fill={`url(#${uid}-broc)`} />
-                <circle cx="69" cy="43" r="15" fill={`url(#${uid}-broc)`} />
-                <circle cx="42" cy="30" r="17" fill={`url(#${uid}-broc)`} />
-                <circle cx="59" cy="31" r="16" fill={`url(#${uid}-broc)`} />
-                <circle cx="50" cy="42" r="18" fill={`url(#${uid}-broc)`} />
-                {/* Floret Texture Dots */}
-                <circle cx="36" cy="26" r="2" fill="#BBF7D0" opacity="0.65" />
-                <circle cx="45" cy="22" r="2.2" fill="#BBF7D0" opacity="0.65" />
-                <circle cx="57" cy="24" r="2" fill="#BBF7D0" opacity="0.65" />
-                <circle cx="27" cy="38" r="2" fill="#BBF7D0" opacity="0.55" />
-                {/* Face on Stalk */}
-                <circle cx="43" cy="64" r="3.8" fill="#0F172A" />
-                <circle cx="41.8" cy="62.8" r="1.3" fill="#FFFFFF" />
-                <circle cx="57" cy="64" r="3.8" fill="#0F172A" />
-                <circle cx="55.8" cy="62.8" r="1.3" fill="#FFFFFF" />
+              <>
+                <ellipse cx="32" cy="58" rx="13" ry="3.2" fill="#0F172A" opacity="0.16" />
+                <path d="M25 36 L39 36 L37 54 C36 56, 28 56, 27 54 Z" fill="#86EFAC" />
+                <path d="M27 36 L37 36 L35.5 54 L28.5 54 Z" fill="#4ADE80" opacity="0.6" />
+                <circle cx="21" cy="27" r="10" fill={`url(#brocCrown-${uid})`} />
+                <circle cx="43" cy="27" r="10" fill={`url(#brocCrown-${uid})`} />
+                <circle cx="32" cy="21" r="12" fill={`url(#brocCrown-${uid})`} />
+                <circle cx="26" cy="29" r="10" fill={`url(#brocCrown-${uid})`} />
+                <circle cx="38" cy="29" r="10" fill={`url(#brocCrown-${uid})`} />
+                <circle cx="27" cy="26" r="2.5" fill="#0F172A" />
+                <circle cx="37" cy="26" r="2.5" fill="#0F172A" />
+                <circle cx="26.3" cy="25.2" r="0.9" fill="#FFFFFF" />
+                <circle cx="36.3" cy="25.2" r="0.9" fill="#FFFFFF" />
                 {isTalking ? (
-                  <ellipse cx="50" cy="72" rx="4" ry="3" fill="#14532D" />
+                  <ellipse cx="32" cy="32" rx="2.8" ry="3" fill="#052E16" />
                 ) : (
-                  <path d="M45 70 Q50 75 55 70" stroke="#0F172A" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+                  <path d="M29 31 Q32 34 35 31" stroke="#052E16" strokeWidth="2.2" fill="none" strokeLinecap="round" />
                 )}
-              </g>
+              </>
             )}
 
-            {/* 4. REALISTIC ILLUSTRATED KIWI */}
             {type === 'kiwi' && (
-              <g>
-                {/* Fuzzy Brown Outer Rim */}
-                <circle cx="50" cy="52" r="35" fill={`url(#${uid}-kiwi-skin)`} />
-                {/* Vibrant Green Sliced Flesh */}
-                <circle cx="50" cy="52" r="29" fill={`url(#${uid}-kiwi-flesh)`} />
-                {/* Creamy White Core */}
-                <ellipse cx="50" cy="52" rx="11" ry="13" fill="#FEF9C3" opacity="0.9" />
-                {/* Tiny Black Kiwi Seeds Ring */}
-                {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => {
-                  const rad = (deg * Math.PI) / 180;
-                  const sx = 50 + Math.cos(rad) * 17;
-                  const sy = 52 + Math.sin(rad) * 17;
-                  return <circle key={deg} cx={sx} cy={sy} r="1.6" fill="#1E293B" />;
-                })}
-                {/* Cute Eyes & Smile */}
-                <circle cx="42" cy="49" r="3.8" fill="#0F172A" />
-                <circle cx="40.8" cy="47.8" r="1.3" fill="#FFFFFF" />
-                <circle cx="58" cy="49" r="3.8" fill="#0F172A" />
-                <circle cx="56.8" cy="47.8" r="1.3" fill="#FFFFFF" />
+              <>
+                <ellipse cx="32" cy="58" rx="15" ry="3.5" fill="#0F172A" opacity="0.16" />
+                <circle cx="32" cy="34" r="21" fill={`url(#kiwiSkin-${uid})`} />
+                <circle cx="32" cy="34" r="17.5" fill={`url(#kiwiFlesh-${uid})`} />
+                <circle cx="32" cy="34" r="7.5" fill="#FEFCE8" />
+                <circle cx="23" cy="25" r="1.1" fill="#1E293B" />
+                <circle cx="41" cy="25" r="1.1" fill="#1E293B" />
+                <circle cx="21" cy="34" r="1.1" fill="#1E293B" />
+                <circle cx="43" cy="34" r="1.1" fill="#1E293B" />
+                <circle cx="24" cy="43" r="1.1" fill="#1E293B" />
+                <circle cx="40" cy="43" r="1.1" fill="#1E293B" />
+                <circle cx="27" cy="32" r="2.5" fill="#1E293B" />
+                <circle cx="37" cy="32" r="2.5" fill="#1E293B" />
+                <circle cx="26.2" cy="31.2" r="0.9" fill="#FFFFFF" />
+                <circle cx="36.2" cy="31.2" r="0.9" fill="#FFFFFF" />
                 {isTalking ? (
-                  <ellipse cx="50" cy="58" rx="4" ry="3" fill="#9F1239" />
+                  <ellipse cx="32" cy="38.5" rx="2.8" ry="3.2" fill="#E11D48" />
                 ) : (
-                  <path d="M45 56 Q50 61 55 56" stroke="#0F172A" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+                  <path d="M28.5 37.5 Q32 41 35.5 37.5" stroke="#365314" strokeWidth="2.2" fill="none" strokeLinecap="round" />
                 )}
-              </g>
+              </>
             )}
 
-            {/* 5. REALISTIC ILLUSTRATED TOMATO */}
             {type === 'tomato' && (
-              <g>
-                {/* Plump Glossy Red Tomato */}
-                <ellipse cx="50" cy="56" rx="35" ry="30" fill={`url(#${uid}-tomato)`} />
-                {/* Glossy Shine */}
-                <ellipse cx="34" cy="44" rx="7" ry="4" transform="rotate(-28 34 44)" fill="#FFFFFF" opacity="0.55" />
-                {/* Star-Shaped Green Calyx Leaves */}
-                <path d="M50 30 L34 22 L42 32 L26 36 L44 37 L50 45 L56 37 L74 36 L58 32 L66 22 Z" fill="#15803D" />
-                <path d="M50 28 L50 18" stroke="#166534" strokeWidth="4" strokeLinecap="round" />
-                {/* Eyes & Smile */}
-                <circle cx="41" cy="55" r="4.2" fill="#0F172A" />
-                <circle cx="39.6" cy="53.6" r="1.5" fill="#FFFFFF" />
-                <circle cx="59" cy="55" r="4.2" fill="#0F172A" />
-                <circle cx="57.6" cy="53.6" r="1.5" fill="#FFFFFF" />
-                <ellipse cx="34" cy="61" rx="4" ry="2.2" fill="#FECDD3" opacity="0.55" />
-                <ellipse cx="66" cy="61" rx="4" ry="2.2" fill="#FECDD3" opacity="0.55" />
+              <>
+                <ellipse cx="32" cy="58" rx="15" ry="3.5" fill="#0F172A" opacity="0.16" />
+                <circle cx="32" cy="36" r="19" fill={`url(#tomatoBody-${uid})`} />
+                <ellipse cx="24" cy="27" rx="5.5" ry="2.8" transform="rotate(-25 24 27)" fill="#FFFFFF" opacity="0.55" />
+                <path d="M32 18 L24 13 L29 19 L21 21 L30 21 L32 26 L34 21 L43 21 L35 19 L40 13 Z" fill="#15803D" />
+                <circle cx="26.5" cy="35" r="2.6" fill="#1E293B" />
+                <circle cx="37.5" cy="35" r="2.6" fill="#1E293B" />
+                <circle cx="25.7" cy="34.2" r="0.9" fill="#FFFFFF" />
+                <circle cx="36.7" cy="34.2" r="0.9" fill="#FFFFFF" />
                 {isTalking ? (
-                  <ellipse cx="50" cy="64" rx="4.5" ry="3.4" fill="#450A0A" />
+                  <ellipse cx="32" cy="41.5" rx="3" ry="3.4" fill="#450A0A" />
                 ) : (
-                  <path d="M44 62 Q50 68 56 62" stroke="#0F172A" strokeWidth="2.8" fill="none" strokeLinecap="round" />
+                  <path d="M28.5 40.5 Q32 44 35.5 40.5" stroke="#450A0A" strokeWidth="2.3" fill="none" strokeLinecap="round" />
                 )}
-              </g>
+              </>
             )}
 
-            {/* 6. REALISTIC ILLUSTRATED TROPICAL PARROT */}
             {type === 'parrot' && (
-              <g>
-                {/* Tropical Crest Feathers */}
-                <path d="M46 22 C40 10, 32 12, 38 24 Z" fill="#F43F5E" />
-                <path d="M52 21 C50 8, 42 10, 46 23 Z" fill="#FBBF24" />
-                {/* Plump Emerald Body */}
-                <ellipse cx="50" cy="55" rx="28" ry="32" fill={`url(#${uid}-parrot)`} />
-                {/* Wing Feather */}
-                <path d="M24 46 C18 58, 22 72, 32 74 C34 62, 32 50, 24 46 Z" fill="#059669" />
-                <path d="M76 46 C82 58, 78 72, 68 74 C66 62, 68 50, 76 46 Z" fill="#059669" />
-                {/* Soft White Cheek Patches */}
-                <circle cx="39" cy="44" r="9" fill="#FFFFFF" />
-                <circle cx="61" cy="44" r="9" fill="#FFFFFF" />
-                {/* Eyes */}
-                <circle cx="40" cy="44" r="4" fill="#0F172A" />
-                <circle cx="38.8" cy="42.8" r="1.4" fill="#FFFFFF" />
-                <circle cx="60" cy="44" r="4" fill="#0F172A" />
-                <circle cx="58.8" cy="42.8" r="1.4" fill="#FFFFFF" />
-                {/* Curved Golden-Coral Beak */}
-                <path d="M44 51 C44 46, 56 46, 56 51 C56 58, 50 62, 50 62 C50 62, 44 58, 44 51 Z" fill="#F59E0B" />
-                <path d="M45 55 Q50 58 55 55 L50 63 Z" fill={isTalking ? '#E11D48' : '#D97706'} />
-                {/* Little Feet */}
-                <path d="M40 85 L37 89 M40 85 L43 89" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
-                <path d="M60 85 L57 89 M60 85 L63 89" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
-              </g>
+              <>
+                <ellipse cx="32" cy="58" rx="14" ry="3.5" fill="#0F172A" opacity="0.16" />
+                <path d="M28 14 C25 7, 32 6, 33 13 C36 7, 41 9, 37 15 Z" fill="#FB7185" />
+                <ellipse cx="32" cy="35" rx="17" ry="19" fill={`url(#parrotBody-${uid})`} />
+                <ellipse cx="32" cy="41" rx="11" ry="11" fill="#FEF08A" />
+                <path d="M15 33 C11 38, 13 47, 19 47 C18 41, 18 36, 15 33 Z" fill="#059669" />
+                <path d="M49 33 C53 38, 51 47, 45 47 C46 41, 46 36, 49 33 Z" fill="#059669" />
+                <circle cx="25" cy="27" r="4.5" fill="#FFFFFF" />
+                <circle cx="39" cy="27" r="4.5" fill="#FFFFFF" />
+                <circle cx="25.5" cy="27" r="2.3" fill="#0F172A" />
+                <circle cx="38.5" cy="27" r="2.3" fill="#0F172A" />
+                <circle cx="24.8" cy="26.2" r="0.8" fill="#FFFFFF" />
+                <circle cx="37.8" cy="26.2" r="0.8" fill="#FFFFFF" />
+                <path d="M28 31 C28 28, 36 28, 36 31 C36 35, 32 37, 32 37 C32 37, 28 35, 28 31 Z" fill="#F97316" />
+                {isTalking && <ellipse cx="32" cy="36.5" rx="2.6" ry="2.2" fill="#9A3412" />}
+              </>
             )}
           </svg>
         </div>
@@ -923,255 +753,34 @@
     }
 
     // ============================================================================
-    // REAL LIVE WEATHER & SEASONAL PRODUCT-FIT ENGINE (OPEN-METEO)
+    // LIVE OPEN-METEO WEATHER HELPER
     // ============================================================================
-    async function fetchExternalWeatherForecast(cityInput = 'Edison, NJ') {
-      const cleanCity = (cityInput || 'Edison, NJ').trim();
-      const geoRes = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cleanCity)}&count=1&language=en&format=json`
-      );
-      const geoData = await geoRes.json();
-      const place = geoData?.results?.[0] || {
-        name: 'Edison',
-        admin1: 'New Jersey',
-        latitude: 40.5187,
-        longitude: -74.4121
-      };
-
-      const weatherRes = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,weather_code&daily=temperature_2m_max,weather_code&temperature_unit=fahrenheit&timezone=auto`
-      );
-      const wData = await weatherRes.json();
-      const todayTemp = Math.round(wData?.current?.temperature_2m ?? 54);
-      const todayCode = wData?.current?.weather_code ?? 2;
-      const tomorrowTemp = Math.round(wData?.daily?.temperature_2m_max?.[1] ?? todayTemp);
-      const tomorrowCode = wData?.daily?.weather_code?.[1] ?? todayCode;
-
-      const mapCodeToCond = (code) => {
-        if (code >= 51) return 'rainy';
-        if (code <= 1) return 'sunny';
-        return 'cloudy';
-      };
-
-      const todayCondition = mapCodeToCond(todayCode);
-      const tomorrowCondition = mapCodeToCond(tomorrowCode);
-      const locationLabel = place.admin1 ? `${place.name}, ${place.admin1}` : place.name;
-
-      let todayVerdict = `Mild weather today (${todayTemp}°F, partly cloudy)`;
-      let isGoodToday = false;
-      let isBadToday = false;
-
-      if (todayCondition === 'rainy' || todayTemp < 42) {
-        todayVerdict = `Chilly/wet weather today (${todayTemp}°F) — indoor or warm items work best`;
-        isBadToday = true;
-      } else if (todayCondition === 'sunny' && todayTemp >= 68) {
-        todayVerdict = `Great sunny weather today (${todayTemp}°F) — awesome outdoor foot traffic!`;
-        isGoodToday = true;
+    async function fetchLiveLocalWeather() {
+      try {
+        const res = await fetch(
+          'https://api.open-meteo.com/v1/forecast?latitude=40.5187&longitude=-74.4121&current=temperature_2m,weather_code&temperature_unit=fahrenheit'
+        );
+        if (!res.ok) return null;
+        const data = await res.json();
+        const tempF = Math.round(data?.current?.temperature_2m ?? 64);
+        const code = data?.current?.weather_code ?? 1;
+        let condition = 'Partly Cloudy';
+        let id = 'cloudy';
+        if (code === 0 || code === 1) {
+          condition = 'Sunny & Clear';
+          id = tempF >= 62 ? 'sunny' : 'cloudy';
+        } else if (code >= 51) {
+          condition = 'Rainy / Cool';
+          id = 'rainy';
+        }
+        return { tempF, condition, id };
+      } catch (e) {
+        return null;
       }
-
-      return {
-        locationLabel,
-        todayTemp,
-        todayCondition,
-        todayVerdict,
-        isGoodToday,
-        isBadToday,
-        tomorrowTemp,
-        tomorrowCondition
-      };
-    }
-
-    function analyzeProductSeasonFit(products, tempF, condition) {
-      const hasColdDrink = products.some((p) =>
-        /lemonade|iced|ice cream|snow|slush|smoothie|popsicle|soda|juice|cold/i.test(p.name)
-      );
-      const hasHotDrink = products.some((p) =>
-        /cocoa|hot chocolate|coffee|tea|cider|warm/i.test(p.name)
-      );
-
-      if (tempF < 60 && hasColdDrink && !hasHotDrink) {
-        return {
-          status: 'mismatch_cold',
-          priceDirection: 'avoid',
-          headline: `Switch to warm treats for ${tempF}°F weather!`,
-          explanation: `At ${tempF}°F, customers rarely buy cold drinks like Lemonade. Warm items sell much faster right now.`,
-          suggestedItems: [
-            { name: 'Hot Cocoa Cup', price: 2.5, unitCost: 0.45, reason: `Cozy bestseller in ${tempF}°F weather` },
-            { name: 'Warm Chocolate Chip Cookies', price: 2.0, unitCost: 0.4, reason: 'Easy grab-and-go snack' }
-          ]
-        };
-      }
-
-      if (tempF >= 78 && hasHotDrink && !hasColdDrink) {
-        return {
-          status: 'mismatch_hot',
-          priceDirection: 'avoid',
-          headline: `Offer cold drinks for ${tempF}°F heat!`,
-          explanation: `It's ${tempF}°F outside! Cold refreshments outsell hot drinks when it's warm.`,
-          suggestedItems: [
-            { name: 'Fresh Squeezed Lemonade', price: 2.5, unitCost: 0.4, reason: `High thirst demand at ${tempF}°F` },
-            { name: 'Rainbow Snow Cones', price: 3.0, unitCost: 0.35, reason: 'Great warm-weather profit margin' }
-          ]
-        };
-      }
-
-      if ((tempF >= 72 && hasColdDrink) || (tempF < 58 && hasHotDrink)) {
-        return {
-          status: 'peak_match',
-          priceDirection: 'raise',
-          headline: 'Great weather match for your menu!',
-          explanation: `Your menu fits today's ${tempF}°F weather really well—strong customer interest expected.`,
-          suggestedItems: []
-        };
-      }
-
-      return {
-        status: 'neutral',
-        priceDirection: 'keep',
-        headline: 'Balanced menu for today’s weather',
-        explanation: `Your items fit ${tempF}°F (${condition}) weather nicely.`,
-        suggestedItems: []
-      };
     }
 
     // ============================================================================
-    // REAL-DATA DEMAND & SMART PRICING ENGINE (COMPUTED FROM ACTUAL SHOP LOGS)
-    // ============================================================================
-    function evaluateRealShopDemand({
-      products,
-      salesLog,
-      activeDay,
-      liveWeatherReport,
-      forecastDow,
-      materialCost,
-      totalTargetRevenue,
-      durationDays
-    }) {
-      const dowObj = DAY_OF_WEEK_OPTIONS.find((d) => d.id === forecastDow) || DAY_OF_WEEK_OPTIONS[0];
-      const weatherObj =
-        WEATHER_OPTIONS.find((w) => w.id === liveWeatherReport.tomorrowCondition) || WEATHER_OPTIONS[1];
-
-      // 1. Real menu & margin stats from actual products
-      const avgSellingPrice =
-        products.length > 0
-          ? Number((products.reduce((s, p) => s + p.price, 0) / products.length).toFixed(2))
-          : 2.5;
-      const avgUnitCost =
-        products.length > 0
-          ? Number((products.reduce((s, p) => s + p.unitCost, 0) / products.length).toFixed(2))
-          : 0.45;
-      const avgUnitProfit = Number(Math.max(0.1, avgSellingPrice - avgUnitCost).toFixed(2));
-
-      // 2. Real sales history grouped by day
-      const dailyUnitsMap = {};
-      salesLog.forEach((tx) => {
-        const d = tx.day || 1;
-        dailyUnitsMap[d] = (dailyUnitsMap[d] || 0) + (tx.unitsCount || 1);
-      });
-      const loggedDays = Object.keys(dailyUnitsMap)
-        .map(Number)
-        .sort((a, b) => a - b);
-      const totalLoggedUnits = salesLog.reduce((s, tx) => s + (tx.unitsCount || 1), 0);
-      const avgDailyUnits =
-        loggedDays.length > 0 ? Number((totalLoggedUnits / loggedDays.length).toFixed(1)) : null;
-
-      // 3. Seasonal fit check based on real Open-Meteo temperature
-      const seasonFit = analyzeProductSeasonFit(
-        products,
-        liveWeatherReport.todayTemp,
-        liveWeatherReport.todayCondition
-      );
-
-      // 4. Tomorrow's unit forecast using actual sales pace (if logged) + real Open-Meteo weather + day trend
-      const baseUnits = avgDailyUnits !== null ? avgDailyUnits : Math.max(4, Math.round(12 - avgSellingPrice * 0.6));
-      const seasonMult = seasonFit.status.startsWith('mismatch') ? 0.65 : seasonFit.status === 'peak_match' ? 1.2 : 1.0;
-      const tomorrowPredictedUnits = Math.max(
-        1,
-        Math.round(baseUnits * weatherObj.demandMult * dowObj.demandMult * seasonMult)
-      );
-
-      // 5. Real error & anomaly tracking computed purely from actual logged days (no fake test days!)
-      const realDayVariances = [];
-      for (let i = 1; i < loggedDays.length; i++) {
-        const prevDay = loggedDays[i - 1];
-        const currDay = loggedDays[i];
-        const prevUnits = dailyUnitsMap[prevDay];
-        const actualUnits = dailyUnitsMap[currDay];
-        const diff = Math.abs(actualUnits - prevUnits);
-        realDayVariances.push({
-          dayLabel: `Day ${currDay} vs. Day ${prevDay}`,
-          predicted: `${prevUnits} units`,
-          actual: `${actualUnits} units`,
-          error: `${diff} unit${diff === 1 ? '' : 's'} diff`,
-          reason:
-            actualUnits > prevUnits
-              ? `Sales jumped by +${actualUnits - prevUnits} units compared to Day ${prevDay}.`
-              : actualUnits < prevUnits
-              ? `Sales dipped by -${prevUnits - actualUnits} units compared to Day ${prevDay}.`
-              : `Exact same unit volume as Day ${prevDay}.`
-        });
-      }
-
-      const realAvgDaySwing =
-        realDayVariances.length > 0
-          ? Number(
-              (
-                realDayVariances.reduce((sum, item, idx) => {
-                  const prevU = dailyUnitsMap[loggedDays[idx]];
-                  const currU = dailyUnitsMap[loggedDays[idx + 1]];
-                  return sum + Math.abs(currU - prevU);
-                }, 0) / realDayVariances.length
-              ).toFixed(1)
-            )
-          : null;
-
-      // 6. Smart price action based on real unit cost, margin & live temperature
-      let recommendedPrice = avgSellingPrice;
-      let priceAction = 'Keep your current price';
-      if (seasonFit.priceDirection === 'avoid') {
-        priceAction = seasonFit.headline;
-      } else if (seasonFit.priceDirection === 'raise') {
-        recommendedPrice = Number((avgSellingPrice + 0.5).toFixed(2));
-        priceAction = `Raise price +$0.50 to $${recommendedPrice.toFixed(2)}`;
-      } else if (seasonFit.priceDirection === 'lower') {
-        recommendedPrice = Math.max(0.5, Number((avgSellingPrice - 0.25).toFixed(2)));
-        priceAction = `Lower price -$0.25 to $${recommendedPrice.toFixed(2)}`;
-      } else if (avgUnitProfit < 0.75) {
-        recommendedPrice = Number((avgSellingPrice + 0.25).toFixed(2));
-        priceAction = `Raise price +$0.25 to $${recommendedPrice.toFixed(2)} for healthier profit`;
-      } else {
-        priceAction = `Great margin ($${avgUnitProfit.toFixed(2)} profit per item)`;
-      }
-
-      const projectedTotalRev = tomorrowPredictedUnits * recommendedPrice * durationDays;
-      const verdict =
-        seasonFit.status.startsWith('mismatch')
-          ? 'Swap Item!'
-          : totalTargetRevenue <= 0 || projectedTotalRev >= totalTargetRevenue * 0.9
-          ? 'On Track!'
-          : 'Stretch Goal';
-
-      return {
-        weatherObj,
-        dowObj,
-        seasonFit,
-        avgSellingPrice,
-        avgUnitCost,
-        avgUnitProfit,
-        recommendedPrice,
-        priceAction,
-        tomorrowPredictedUnits,
-        loggedDaysCount: loggedDays.length,
-        totalLoggedUnits,
-        avgDailyUnits,
-        realAvgDaySwing,
-        realDayVariances,
-        verdict
-      };
-    }
-
-    // ============================================================================
-    // ONBOARDING WIZARD (INCLUDES TOWN/CITY QUESTION FOR LIVE WEATHER)
+    // ONBOARDING WIZARD (CUSTOM SHOP CATEGORY TEXT INPUT + ASSISTANT NAME)
     // ============================================================================
     function OnboardingWizard({
       step,
@@ -1180,8 +789,6 @@
       setKidName,
       kidAgeGroup,
       setKidAgeGroup,
-      cityLocation,
-      setCityLocation,
       parentKnows,
       setParentKnows,
       contactMethod,
@@ -1194,8 +801,8 @@
       setThemeId,
       mascotId,
       setMascotId,
-      customAssistantName,
-      setCustomAssistantName,
+      customMascotName,
+      setCustomMascotName,
       businessName,
       setBusinessName,
       category,
@@ -1242,13 +849,17 @@
             return;
           }
         }
+        if (step === 3 && customMascotName.trim() && containsProfanity(customMascotName)) {
+          setStepError('Please choose a friendly assistant name!');
+          return;
+        }
         if (step === 5) {
           if (!goalItemName.trim() || Number(financialGoal) <= 0) {
             setStepError('Enter what you are saving up for and a goal amount above $0!');
             return;
           }
-          if (containsProfanity(goalItemName)) {
-            setStepError('Please choose a friendly goal name!');
+          if (containsProfanity(goalItemName) || containsProfanity(category)) {
+            setStepError('Please choose friendly, school-safe names!');
             return;
           }
         }
@@ -1309,27 +920,15 @@
                     ))}
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-extrabold mb-1">Business Name</label>
-                    <input
-                      type="text"
-                      value={businessName}
-                      onChange={(e) => setBusinessName(censorKidSafeText(e.target.value))}
-                      placeholder="e.g. Sunset Lemonade Stand"
-                      className={`w-full px-4 py-3 rounded-2xl border-2 text-sm font-bold ${theme.inputBg}`}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-extrabold mb-1">Town / City (Live Weather)</label>
-                    <input
-                      type="text"
-                      value={cityLocation}
-                      onChange={(e) => setCityLocation(censorKidSafeText(e.target.value))}
-                      placeholder="Edison, NJ"
-                      className={`w-full px-4 py-3 rounded-2xl border-2 text-sm font-bold ${theme.inputBg}`}
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-extrabold mb-1">Business Name</label>
+                  <input
+                    type="text"
+                    value={businessName}
+                    onChange={(e) => setBusinessName(censorKidSafeText(e.target.value))}
+                    placeholder="e.g. Sunset Pop-Up Shop"
+                    className={`w-full px-4 py-3 rounded-2xl border-2 text-sm font-bold ${theme.inputBg}`}
+                  />
                 </div>
               </div>
             )}
@@ -1403,17 +1002,7 @@
 
             {step === 3 && (
               <div className="space-y-4">
-                <h2 className="text-2xl font-black">🤝 Pick & Name Your AI Assistant</h2>
-                <div>
-                  <label className="block text-xs font-extrabold mb-1">Custom Assistant Name (Optional)</label>
-                  <input
-                    type="text"
-                    value={customAssistantName}
-                    onChange={(e) => setCustomAssistantName(censorKidSafeText(e.target.value))}
-                    placeholder="e.g. Coach Maya, Nova, Pip..."
-                    className={`w-full px-4 py-2.5 rounded-2xl border-2 text-sm font-bold ${theme.inputBg}`}
-                  />
-                </div>
+                <h2 className="text-2xl font-black">🌱 Pick & Name Your AI Veggie Buddy</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {MASCOTS.map((m) => (
                     <button
@@ -1424,11 +1013,23 @@
                         mascotId === m.id ? `${theme.primaryBtn}` : theme.innerCream
                       }`}
                     >
-                      <PixelMascot type={m.id} size={52} circular />
+                      <PixelMascot type={m.id} size={52} />
                       <div className="font-black text-xs">{m.shortName}</div>
                       <div className="text-[10px] opacity-80">{m.vibe}</div>
                     </button>
                   ))}
+                </div>
+                <div>
+                  <label className="block text-xs font-extrabold mb-1">
+                    Custom Assistant Name (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={customMascotName}
+                    onChange={(e) => setCustomMascotName(censorKidSafeText(e.target.value))}
+                    placeholder="Give your buddy a custom name..."
+                    className={`w-full px-4 py-2.5 rounded-2xl border-2 text-sm font-bold ${theme.inputBg}`}
+                  />
                 </div>
               </div>
             )}
@@ -1473,17 +1074,13 @@
                   </div>
                   <div>
                     <label className="block text-xs font-extrabold mb-1">Shop Category</label>
-                    <select
+                    <input
+                      type="text"
                       value={category}
-                      onChange={(e) => setCategory(e.target.value)}
+                      onChange={(e) => setCategory(censorKidSafeText(e.target.value))}
+                      placeholder="Type your category..."
                       className={`w-full px-3.5 py-2.5 rounded-2xl border-2 text-sm font-bold ${theme.inputBg}`}
-                    >
-                      {CATEGORIES.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.emoji} {c.label}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
                 </div>
 
@@ -1545,13 +1142,13 @@
                 <h2 className="text-2xl font-black">🚀 Quick 3-Step Shop Tour</h2>
                 <div className="space-y-2.5 text-xs sm:text-sm">
                   <div className={`p-3.5 rounded-2xl border ${theme.innerCream}`}>
-                    <strong>1. Add Your Products:</strong> Type any item name and price (or ask your AI Coach!)—a cute cartoon sticker is drawn automatically!
+                    <strong>1. Add Your Products:</strong> Type any item name and price—Seedling creates a realistic studio sticker automatically!
                   </div>
                   <div className={`p-3.5 rounded-2xl border ${theme.innerCream}`}>
                     <strong>2. Scan & Sell:</strong> Tap items or type barcodes on the Cash Register, add tips, and unlock the Bundle Master badge!
                   </div>
                   <div className={`p-3.5 rounded-2xl border ${theme.innerCream}`}>
-                    <strong>3. Live Weather & ML Coach:</strong> Your AI Coach checks live weather in <strong>{cityLocation || 'Edison, NJ'}</strong>, evaluates seasonal product fit, and forecasts tomorrow's sales!
+                    <strong>3. Close Shop & Split Jars:</strong> Wrap up each day with your AI Coach and split profits into Goal, Supplies, and Charity jars!
                   </div>
                 </div>
               </div>
@@ -1594,6 +1191,7 @@
     function FloatingMascotCompanion({
       theme,
       mascot,
+      assistantDisplayName,
       kidName,
       chatMessages,
       isAiTyping,
@@ -1607,7 +1205,7 @@
           {isOpen && (
             <div className={`w-72 sm:w-80 ${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-4 space-y-3`}>
               <div className="flex items-center justify-between border-b border-black/10 pb-2">
-                <div className="font-black text-xs">{mascot.shortName} Quick Chat</div>
+                <div className="font-black text-xs">{assistantDisplayName} Quick Chat</div>
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
@@ -1616,10 +1214,10 @@
                   ✕
                 </button>
               </div>
-              <div className="max-h-44 overflow-y-auto space-y-2 text-xs">
+              <div className="max-h-44 overflow-y-auto seedling-scroll space-y-2 text-xs">
                 {chatMessages.length === 0 ? (
                   <div className={`p-2.5 rounded-2xl border ${theme.innerCream}`}>
-                    Hi {kidName}! Ask me anything or say "add cookies to my inventory"!
+                    Hi {kidName}! Need a quick pricing or bundle tip? Ask me!
                   </div>
                 ) : (
                   chatMessages.slice(-4).map((m) => (
@@ -1647,7 +1245,7 @@
                   type="text"
                   value={miniInput}
                   onChange={(e) => setMiniInput(e.target.value)}
-                  placeholder="Chat with your coach..."
+                  placeholder="Ask a quick question..."
                   className={`flex-1 px-3 py-2 rounded-full border text-xs font-bold outline-none ${theme.inputBg}`}
                 />
                 <button
@@ -1664,11 +1262,11 @@
           <button
             type="button"
             onClick={() => setIsOpen(!isOpen)}
-            title={`Chat with ${mascot.shortName}`}
+            title={`Chat with ${assistantDisplayName}`}
             className="group flex items-center gap-2 cursor-pointer"
           >
             <span className={`hidden sm:inline-block px-3 py-1.5 rounded-full border-2 text-xs font-black shadow-md ${theme.card}`}>
-              💬 Ask {mascot.shortName}
+              💬 Ask {assistantDisplayName}
             </span>
             <PixelMascot type={mascot.id} size={58} circular isTalking={isAiTyping} />
           </button>
@@ -1702,7 +1300,6 @@
       // Founder & Account Security State
       const [kidName, setKidName] = useState(saved?.kidName ?? '');
       const [kidAgeGroup, setKidAgeGroup] = useState(saved?.kidAgeGroup ?? '8-9');
-      const [cityLocation, setCityLocation] = useState(saved?.cityLocation ?? 'Edison, NJ');
       const [parentKnows, setParentKnows] = useState(saved?.parentKnows ?? null);
       const [contactMethod, setContactMethod] = useState(saved?.contactMethod ?? 'email');
       const [parentContact, setParentContact] = useState(saved?.parentContact ?? '');
@@ -1711,10 +1308,10 @@
       const [loginPasswordInput, setLoginPasswordInput] = useState('');
       const [loginError, setLoginError] = useState('');
 
-      // Theme & Mascot State
+      // Theme & Veggie Buddy State
       const [themeId, setThemeId] = useState(saved?.themeId ?? 'mint');
-      const [mascotId, setMascotId] = useState(saved?.mascotId ?? 'parrot');
-      const [customAssistantName, setCustomAssistantName] = useState(saved?.customAssistantName ?? '');
+      const [mascotId, setMascotId] = useState(saved?.mascotId ?? 'sprout');
+      const [customMascotName, setCustomMascotName] = useState(saved?.customMascotName ?? '');
       const [tycoonGems, setTycoonGems] = useState(saved?.tycoonGems ?? 0);
       const [streakDays] = useState(saved?.streakDays ?? 1);
 
@@ -1722,9 +1319,9 @@
       const [shopsList, setShopsList] = useState(saved?.shopsList ?? []);
       const [activeShopId, setActiveShopId] = useState(saved?.activeShopId ?? 'shop-1');
 
-      // Business Goal & Inventory State
+      // Business Goal & Inventory State (Shop Category starts blank)
       const [businessName, setBusinessName] = useState(saved?.businessName ?? '');
-      const [category, setCategory] = useState(saved?.category ?? 'lemonade');
+      const [category, setCategory] = useState(saved?.category ?? '');
       const [goalItemName, setGoalItemName] = useState(saved?.goalItemName ?? '');
       const [financialGoal, setFinancialGoal] = useState(saved?.financialGoal ?? 0);
       const [durationDays, setDurationDays] = useState(saved?.durationDays ?? 3);
@@ -1739,26 +1336,19 @@
       const [cashTendered, setCashTendered] = useState('');
       const [posBanner, setPosBanner] = useState(null);
 
-      // AI Chatbot State & Pending Product-Add Price Prompt State
+      // Live Weather & Day-of-Week State
+      const [liveWeatherInfo, setLiveWeatherInfo] = useState({ tempF: 64, condition: 'Partly Cloudy' });
+      const [forecastWeather, setForecastWeather] = useState(saved?.forecastWeather ?? 'cloudy');
+      const [forecastDow, setForecastDow] = useState(saved?.forecastDow ?? 'sun');
+
+      // Interactive AI Chatbot Conversation History & Loading State
       const [chatMessages, setChatMessages] = useState([]);
       const [isAiTyping, setIsAiTyping] = useState(false);
-      const [aiEngineStatus, setAiEngineStatus] = useState('AI Ready');
-      const [pendingProductToAdd, setPendingProductToAdd] = useState(null);
 
-      // Live External Weather State (Automatically fetched via Open-Meteo)
-      const [liveWeatherReport, setLiveWeatherReport] = useState({
-        locationLabel: 'Edison, NJ',
-        todayTemp: 54,
-        todayCondition: 'cloudy',
-        todayVerdict: 'Checking live weather in Edison, NJ...',
-        isGoodToday: false,
-        isBadToday: false,
-        tomorrowTemp: 56,
-        tomorrowCondition: 'cloudy'
-      });
-
-      const [forecastWeather, setForecastWeather] = useState(saved?.forecastWeather ?? 'cloudy');
-      const [forecastDow, setForecastDow] = useState(saved?.forecastDow ?? 'sat');
+      // Ollama Local LLM Settings
+      const [ollamaUrl, setOllamaUrl] = useState(saved?.ollamaUrl ?? 'http://localhost:11434/api/chat');
+      const [ollamaModel, setOllamaModel] = useState(saved?.ollamaModel ?? 'llama3.2');
+      const [aiEngineStatus, setAiEngineStatus] = useState('AI Coach Ready');
 
       // Cash Register Tips, Bundle Badge & Confetti State
       const [tipAmount, setTipAmount] = useState(0);
@@ -1771,28 +1361,18 @@
         saved?.jarAllocations ?? { goal: 70, supplies: 20, charity: 10 }
       );
 
-      // Fetch real external weather automatically on load and whenever cityLocation changes
       useEffect(() => {
-        let cancelled = false;
-        fetchExternalWeatherForecast(cityLocation || 'Edison, NJ')
-          .then((report) => {
-            if (cancelled) return;
-            setLiveWeatherReport(report);
-            setForecastWeather(report.tomorrowCondition);
-          })
-          .catch(() => {
-            if (cancelled) return;
-            setLiveWeatherReport((prev) => ({
-              ...prev,
-              todayVerdict: `Live forecast active for ${cityLocation || 'Edison, NJ'}`
-            }));
-          });
-        return () => {
-          cancelled = true;
-        };
-      }, [cityLocation]);
+        fetchLiveLocalWeather().then((info) => {
+          if (info) {
+            setLiveWeatherInfo({ tempF: info.tempF, condition: info.condition });
+            if (!saved?.forecastWeather) {
+              setForecastWeather(info.id);
+            }
+          }
+        });
+      }, []);
 
-      // Persist ALL app state to localStorage automatically
+      // Persist app state to localStorage automatically
       useEffect(() => {
         try {
           const currentShopSnapshot = {
@@ -1821,14 +1401,13 @@
             shopOpen,
             kidName,
             kidAgeGroup,
-            cityLocation,
             parentKnows,
             contactMethod,
             parentContact,
             accountPassword,
             themeId,
             mascotId,
-            customAssistantName,
+            customMascotName,
             tycoonGems,
             streakDays,
             shopsList: updatedShops,
@@ -1842,6 +1421,8 @@
             products,
             activeDay,
             salesLog,
+            ollamaUrl,
+            ollamaModel,
             forecastWeather,
             forecastDow,
             earnedBadges,
@@ -1860,14 +1441,13 @@
         shopOpen,
         kidName,
         kidAgeGroup,
-        cityLocation,
         parentKnows,
         contactMethod,
         parentContact,
         accountPassword,
         themeId,
         mascotId,
-        customAssistantName,
+        customMascotName,
         tycoonGems,
         streakDays,
         activeShopId,
@@ -1880,6 +1460,8 @@
         products,
         activeDay,
         salesLog,
+        ollamaUrl,
+        ollamaModel,
         forecastWeather,
         forecastDow,
         earnedBadges,
@@ -1909,7 +1491,7 @@
         const newShop = {
           id: newShopId,
           businessName: '',
-          category: 'lemonade',
+          category: '',
           goalItemName: '',
           financialGoal: 0,
           durationDays: 3,
@@ -1924,7 +1506,7 @@
         setShopsList([...nextList, newShop]);
         setActiveShopId(newShopId);
         setBusinessName('');
-        setCategory('lemonade');
+        setCategory('');
         setGoalItemName('');
         setFinancialGoal(0);
         setDurationDays(3);
@@ -1966,7 +1548,7 @@
         setShopsList(syncedList);
         setActiveShopId(target.id);
         setBusinessName(target.businessName ?? '');
-        setCategory(target.category ?? 'lemonade');
+        setCategory(target.category ?? '');
         setGoalItemName(target.goalItemName ?? '');
         setFinancialGoal(target.financialGoal ?? 0);
         setDurationDays(target.durationDays ?? 3);
@@ -1987,7 +1569,6 @@
         } catch (e) {}
         setKidName('');
         setKidAgeGroup('8-9');
-        setCityLocation('Edison, NJ');
         setParentKnows(null);
         setContactMethod('email');
         setParentContact('');
@@ -1996,13 +1577,13 @@
         setLoginPasswordInput('');
         setLoginError('');
         setThemeId('mint');
-        setMascotId('parrot');
-        setCustomAssistantName('');
+        setMascotId('sprout');
+        setCustomMascotName('');
         setTycoonGems(0);
         setShopsList([]);
         setActiveShopId('shop-1');
         setBusinessName('');
-        setCategory('lemonade');
+        setCategory('');
         setGoalItemName('');
         setFinancialGoal(0);
         setDurationDays(1);
@@ -2020,12 +1601,20 @@
         setActiveTab('home');
       };
 
-      // Safe display fallbacks
       const displayKidName = censorKidSafeText(kidName.trim()) || 'Founder';
       const displayShopName = censorKidSafeText(businessName.trim()) || 'My Pop-Up Shop';
       const displayGoalItem = censorKidSafeText(goalItemName.trim()) || 'My Dream Goal';
 
-      // Derived Math Engine Metrics
+      const baseMascot = MASCOTS.find((m) => m.id === mascotId) || MASCOTS[0];
+      const assistantDisplayName =
+        censorKidSafeText(customMascotName.trim()) || baseMascot.shortName;
+      const activeMascot = {
+        ...baseMascot,
+        shortName: assistantDisplayName,
+        name: customMascotName.trim() ? assistantDisplayName : baseMascot.name
+      };
+
+      // Real Shop Math Metrics
       const totalTargetRevenue = Number((Number(financialGoal) + Number(materialCost)).toFixed(2));
       const dailySalesTarget = Number((totalTargetRevenue / Math.max(1, Number(durationDays))).toFixed(2));
       const breakEvenPoint = Number(Number(materialCost).toFixed(2));
@@ -2040,70 +1629,87 @@
         breakEvenPoint > 0 ? totalRevenueEarned >= breakEvenPoint : totalRevenueEarned > 0;
       const hasReachedGoal = totalTargetRevenue > 0 && totalRevenueEarned >= totalTargetRevenue;
 
-      // Helper to add a product with an auto-generated cartoon picture
-      const addAiSuggestedProductToInventory = async (itemName, priceNum, costNum = 0.45) => {
-        const cleanName = censorKidSafeText(itemName.trim());
-        const stickerUrl = await generateCartoonProductImage(cleanName);
-        const formattedPrice = Number(Math.max(0.25, priceNum).toFixed(2));
-        setProducts((prev) => {
-          const nextBarcode = String(prev.length + 1).padStart(3, '0');
-          return [
-            {
-              id: `prod-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-              barcode: nextBarcode,
-              name: cleanName,
-              price: formattedPrice,
-              unitCost: Number(costNum.toFixed(2)),
-              imageUrl: stickerUrl,
-              emoji: '🛍️'
-            },
-            ...prev
-          ];
-        });
-        return formattedPrice;
-      };
+      // Simple, 100% Real Shop Forecast & Pricing Tips (No Fake Numbers)
+      const shopInsights = useMemo(() => {
+        const weatherObj = WEATHER_OPTIONS.find((w) => w.id === forecastWeather) || WEATHER_OPTIONS[1];
+        const dowObj = DAY_OF_WEEK_OPTIONS.find((d) => d.id === forecastDow) || DAY_OF_WEEK_OPTIONS[0];
 
-      // Real-Data Demand & Smart Pricing Analysis (Zero synthetic test stats)
-      const pennyAnalysis = useMemo(
-        () =>
-          evaluateRealShopDemand({
-            products,
-            salesLog,
-            activeDay,
-            liveWeatherReport,
-            forecastDow,
-            materialCost,
-            totalTargetRevenue,
-            durationDays
-          }),
-        [
-          products,
-          salesLog,
-          activeDay,
-          liveWeatherReport,
-          forecastDow,
-          materialCost,
-          totalTargetRevenue,
-          durationDays
-        ]
-      );
+        const avgSellingPrice =
+          products.length > 0
+            ? Number((products.reduce((sum, p) => sum + p.price, 0) / products.length).toFixed(2))
+            : 2.5;
+        const avgUnitCost =
+          products.length > 0
+            ? Number((products.reduce((sum, p) => sum + p.unitCost, 0) / products.length).toFixed(2))
+            : 0.5;
+        const avgMarginPerItem = Math.max(0.25, Number((avgSellingPrice - avgUnitCost).toFixed(2)));
 
-      const baseMascot = MASCOTS.find((m) => m.id === mascotId) || MASCOTS[0];
-      const trimmedAssistantName = censorKidSafeText((customAssistantName || '').trim());
-      const activeMascot = trimmedAssistantName
-        ? { ...baseMascot, shortName: trimmedAssistantName, name: `${trimmedAssistantName} • AI Business Coach` }
-        : baseMascot;
+        const activeSellingDays = new Set(salesLog.map((tx) => tx.day)).size;
+        const totalLoggedUnits = salesLog.reduce((sum, tx) => sum + (tx.unitsCount || 1), 0);
+        const avgLoggedUnitsPerDay =
+          activeSellingDays > 0 ? Number((totalLoggedUnits / activeSellingDays).toFixed(1)) : null;
+
+        const unitsNeededPerDayForGoal = Math.max(
+          1,
+          Math.ceil(dailySalesTarget / Math.max(0.5, avgSellingPrice))
+        );
+
+        const baseEstimate = avgLoggedUnitsPerDay !== null ? avgLoggedUnitsPerDay : unitsNeededPerDayForGoal;
+        const tomorrowPredictedUnits = Math.max(
+          1,
+          Math.round(baseEstimate * weatherObj.demandMult * dowObj.demandMult)
+        );
+
+        const recommendedPrice = Number(
+          (weatherObj.id === 'sunny' && dowObj.demandMult >= 1.2
+            ? avgSellingPrice + 0.25
+            : avgSellingPrice
+          ).toFixed(2)
+        );
+
+        const priceAction =
+          recommendedPrice > avgSellingPrice
+            ? `Try +$0.25 ($${recommendedPrice.toFixed(2)}) for peak demand`
+            : `Keep menu around $${avgSellingPrice.toFixed(2)}`;
+
+        const tips = [
+          `Bundle Boost: Keep it up, ${displayKidName}! Selling 2+ items together unlocks the Bundle Master badge and raises your average order!`,
+          avgLoggedUnitsPerDay !== null
+            ? `Real Pace Check: You've averaged ${avgLoggedUnitsPerDay} units/day across ${activeSellingDays} selling day(s) ($${totalRevenueEarned.toFixed(2)} earned so far).`
+            : `Goal Pace: At ~$${avgSellingPrice.toFixed(2)} per item, selling ${unitsNeededPerDayForGoal} item(s)/day hits your $${dailySalesTarget.toFixed(2)} daily target!`,
+          `Goal Sign Trick: Write "Saving $${financialGoal} for ${displayGoalItem}!" on your table sign—neighbors love supporting a real goal!`
+        ];
+
+        return {
+          weatherObj,
+          dowObj,
+          avgSellingPrice,
+          avgUnitCost,
+          avgMarginPerItem,
+          activeSellingDays,
+          totalLoggedUnits,
+          avgLoggedUnitsPerDay,
+          unitsNeededPerDayForGoal,
+          tomorrowPredictedUnits,
+          recommendedPrice,
+          priceAction,
+          tips
+        };
+      }, [
+        products,
+        salesLog,
+        dailySalesTarget,
+        forecastWeather,
+        forecastDow,
+        displayKidName,
+        totalRevenueEarned,
+        financialGoal,
+        displayGoalItem
+      ]);
+
       const theme = THEMES[themeId] || THEMES.mint;
 
-      // Age-adapted helper for phrasing natural responses
-      const formatByAge = (age, variants) => {
-        if (age === '6-7') return variants.young;
-        if (age === '8-9') return variants.kid;
-        if (age === '10-12') return variants.tween;
-        return variants.teen;
-      };
-
-      // Natural Age-Adapted AI Chatbot with Vercel Serverless Proxy (https://seedling-lac.vercel.app/api/chat) + Product Add Flow
+      // Send message to AI Coach
       const handleSendChat = async (textToSend) => {
         const cleanText = (textToSend || '').trim();
         if (!cleanText) return;
@@ -2125,407 +1731,116 @@
           return;
         }
 
-        // 1. Check if the user is answering the price for a pending product add!
-        if (pendingProductToAdd) {
-          const isQuestionOrCancel =
-            /\?/.test(censoredUserText) ||
-            /^(no|nah|nevermind|cancel|stop|skip|what|which|how|why|im asking|i'm asking|you tell)/i.test(
-              censoredUserText.trim()
-            );
-
-          if (isQuestionOrCancel) {
-            setPendingProductToAdd(null);
-          } else {
-            const priceMatch = censoredUserText.match(/\$?\s*(\d+(?:\.\d{1,2})?)/);
-            if (priceMatch) {
-              const parsedPrice = parseFloat(priceMatch[1]);
-              const itemToCreate = pendingProductToAdd;
-              setPendingProductToAdd(null);
-              setIsAiTyping(true);
-              const finalPrice = await addAiSuggestedProductToInventory(itemToCreate, parsedPrice);
-              const addedReply = formatByAge(kidAgeGroup, {
-                young: `Yay! I drew a cute cartoon picture of ${itemToCreate} and put it in your shop for $${finalPrice.toFixed(2)}! 🎉`,
-                kid: `Awesome! I generated a cartoon picture for ${itemToCreate} and added it to your inventory for $${finalPrice.toFixed(2)}! 🎨`,
-                tween: `Done! I created a custom cartoon sticker for ${itemToCreate} and added it to your menu at $${finalPrice.toFixed(2)}.`,
-                teen: `Added ${itemToCreate} to your inventory at $${finalPrice.toFixed(2)} with a generated product graphic.`
-              });
-              setChatMessages((prev) => [
-                ...prev,
-                { id: `ai-${Date.now()}-${Math.random()}`, role: 'ai', text: addedReply }
-              ]);
-              setIsAiTyping(false);
-              return;
-            } else {
-              const askAgainReply = formatByAge(kidAgeGroup, {
-                young: `Oops! Tell me a number for the price of ${pendingProductToAdd}, like $2 or $3!`,
-                kid: `What price should I put on ${pendingProductToAdd}? Just type a number like $2.50!`,
-                tween: `Please give me a dollar amount for ${pendingProductToAdd} (for example, $2.50) so I can add it to your menu!`,
-                teen: `Specify a unit price (e.g., $2.50) for ${pendingProductToAdd} to finalize the inventory entry.`
-              });
-              setChatMessages((prev) => [
-                ...prev,
-                { id: `ai-${Date.now()}-${Math.random()}`, role: 'ai', text: askAgainReply }
-              ]);
-              return;
-            }
-          }
-        }
-
-        // 2. Check if user is commanding the AI to add a specific product (ignore questions like "what should I add?")
-        const isAskingForIdeas =
-          /\?/.test(censoredUserText) ||
-          /^(what|which|suggest|recommend|ideas?|can you suggest|what's something|whats something|what is something)/i.test(
-            censoredUserText.trim()
-          ) ||
-          /\b(?:should i add|could i add|can i add|to add)\b/i.test(censoredUserText);
-
-        const addIntentMatch = !isAskingForIdeas
-          ? censoredUserText.match(
-              /^(?:please\s+|can you\s+)?(?:add|put|create|list)\s+(?:a\s+|an\s+|some\s+)?(.+?)(?:\s+(?:to|in|into|on)\s+(?:my\s+|the\s+)?(?:inventory|menu|shop|store|register))?(?:\s+(?:for|at)\s+\$?\s*(\d+(?:\.\d{1,2})?))?$/i
-            )
-          : null;
-
-        if (addIntentMatch) {
-          let rawItem = (addIntentMatch[1] || '')
-            .replace(/\s+(?:to|in|into|on)\s+(?:my\s+|the\s+)?(?:inventory|menu|shop|store|register).*$/i, '')
-            .trim();
-          const inlinePriceMatch = rawItem.match(/(.+?)\s+(?:for|at)\s+\$?\s*(\d+(?:\.\d{1,2})?)$/i);
-          let inlinePrice = addIntentMatch[2] ? parseFloat(addIntentMatch[2]) : null;
-          if (inlinePriceMatch) {
-            rawItem = inlinePriceMatch[1].trim();
-            inlinePrice = parseFloat(inlinePriceMatch[2]);
-          }
-
-          const invalidItemNames = ['something', 'anything', 'item', 'product', 'to the menu', 'the menu', 'inventory'];
-          if (rawItem && rawItem.length >= 2 && !invalidItemNames.includes(rawItem.toLowerCase())) {
-            const cleanItemTitle = rawItem
-              .split(/\s+/)
-              .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-              .join(' ');
-
-            if (inlinePrice && !isNaN(inlinePrice) && inlinePrice > 0) {
-              setIsAiTyping(true);
-              const finalPrice = await addAiSuggestedProductToInventory(cleanItemTitle, inlinePrice);
-              const addedReply = formatByAge(kidAgeGroup, {
-                young: `Yay! I drew a cute cartoon picture of ${cleanItemTitle} and added it to your inventory for $${finalPrice.toFixed(2)}! 🎉`,
-                kid: `Done! I generated a cartoon picture for ${cleanItemTitle} and added it to your inventory for $${finalPrice.toFixed(2)}! 🎨`,
-                tween: `Added ${cleanItemTitle} to your inventory for $${finalPrice.toFixed(2)} with a custom cartoon sticker!`,
-                teen: `${cleanItemTitle} has been added to your inventory at $${finalPrice.toFixed(2)} along with a generated cartoon graphic.`
-              });
-              setChatMessages((prev) => [
-                ...prev,
-                { id: `ai-${Date.now()}-${Math.random()}`, role: 'ai', text: addedReply }
-              ]);
-              setIsAiTyping(false);
-              return;
-            } else {
-              // Always ask for the price first!
-              setPendingProductToAdd(cleanItemTitle);
-              const askPriceReply = formatByAge(kidAgeGroup, {
-                young: `Ooh, ${cleanItemTitle} sounds super fun! How much money should each ${cleanItemTitle} cost?`,
-                kid: `Awesome idea! How much do you want to charge for ${cleanItemTitle}? Once you tell me the price, I'll draw its cartoon sticker and add it!`,
-                tween: `Great choice! What price would you like to set for ${cleanItemTitle}? Tell me the price and I'll generate its cartoon image and add it to your inventory.`,
-                teen: `Sure—what unit price should I list ${cleanItemTitle} for? Let me know and I'll generate its cartoon graphic and add it to your inventory.`
-              });
-              setChatMessages((prev) => [
-                ...prev,
-                { id: `ai-${Date.now()}-${Math.random()}`, role: 'ai', text: askPriceReply }
-              ]);
-              return;
-            }
-          }
-        }
-
         setIsAiTyping(true);
 
-        const ageToneInstruction =
-          kidAgeGroup === '6-7'
-            ? 'Speak to a 6-7 year old: use super simple, playful, short sentences and easy words.'
-            : kidAgeGroup === '8-9'
-            ? 'Speak to an 8-9 year old: use friendly, upbeat everyday kid language with clear examples.'
-            : kidAgeGroup === '10-12'
-            ? 'Speak to a 10-12 year old: use an encouraging junior-CEO tone introducing real business terms naturally.'
-            : 'Speak to a 13+ teen founder: use sharp, practical startup and data-science language.';
-
-        const topSellingSummary =
-          salesLog.length > 0
-            ? salesLog
-                .slice(0, 5)
-                .map((tx) => `Day ${tx.day}: ${tx.itemsSummary} ($${tx.total.toFixed(2)})`)
-                .join(' | ')
-            : 'No sales recorded yet';
-
-        const fullInventorySummary =
-          products.length > 0
-            ? products
-                .map(
-                  (p) =>
-                    `[#${p.barcode}] ${p.name}: sell $${p.price.toFixed(2)}, cost $${p.unitCost.toFixed(2)}, profit/item $${(p.price - p.unitCost).toFixed(2)}`
-                )
-                .join('; ')
-            : 'No products in inventory yet';
-
-        const todayDateString = new Date().toLocaleDateString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        });
-
-        const systemPrompt = `You are ${activeMascot.shortName}, a genuine, friendly, down-to-earth human-sounding business mentor inside the Seedling app (${SITE_BASE_URL}).
-${ageToneInstruction}
-CRITICAL CONVERSATION RULES:
-- Talk like a real, helpful person—NEVER recite raw stats in parentheses like "(2 SKUs, $0.00 revenue, $-50.00 net profit)" unless asked!
-- Always directly answer the user's actual question using common sense + their real shop data below.
-- Respectfully celebrate and suggest diverse, delicious foods, drinks, and crafts from cultures around the world (like horchata, boba tea, samosas, empanadas, mochi, churros, baklava, macarons, pretzels, or friendship bracelets) when recommending menu ideas—always inclusive, accurate, and 100% respectful!
-- If the user asks what they should sell today from their inventory, compare the actual items they have in stock against today's date (${todayDateString}) and live weather (${liveWeatherReport.todayTemp}°F in ${liveWeatherReport.locationLabel}), and recommend the best item(s) with a natural explanation!
-- Only bring up weather when relevant to their question (like deciding what to sell today, outdoor setup, or seasonal items).
-- Keep replies warm, natural, and concise (2-4 sentences). Stay 100% G-rated.
-
-FULL LIVE WEBSITE & SHOP CONTEXT:
-- Today's Date: ${todayDateString}
-- Current Page/Tab Open: "${activeTab}" (Tabs: Home, Goal & Menu, AI Coach & ML, Cash Register, Tycoon Board)
-- Founder: ${displayKidName} (Age group: ${kidAgeGroup}) | Location: ${liveWeatherReport.locationLabel}
-- Live Weather Today: ${liveWeatherReport.todayTemp}°F — ${liveWeatherReport.todayVerdict}
-- Shop Name: "${displayShopName}" | Status: ${shopOpen ? 'OPEN' : 'CLOSED'} | Selling Day ${activeDay} of ${durationDays}
-- Savings Goal: $${financialGoal} for "${displayGoalItem}" | Supply Costs: $${materialCost} | Break-Even: $${breakEvenPoint.toFixed(2)} | Total Target: $${totalTargetRevenue.toFixed(2)} | Daily Target: $${dailySalesTarget.toFixed(2)}/day
-- Money Earned So Far: Total Revenue = $${totalRevenueEarned.toFixed(2)} | Net Profit = $${netProfitEarned.toFixed(2)} (${hasBrokenEven ? 'Supplies paid off!' : `$${Math.max(0, breakEvenPoint - totalRevenueEarned).toFixed(2)} left to break even`})
-- Tycoon Gems: ${tycoonGems} | Earned Badges: ${earnedBadges.length > 0 ? earnedBadges.join(', ') : 'None yet'}
-- 3-Jar Profit Split: Goal ${jarAllocations.goal}%, Next Supplies ${jarAllocations.supplies}%, Charity ${jarAllocations.charity}%
-- Complete Inventory (${products.length} items): ${fullInventorySummary}
-- Recent Sales Log (${salesLog.length} orders): ${topSellingSummary}
-- ML Forecast: Recommended price $${pennyAnalysis.recommendedPrice.toFixed(2)} (${pennyAnalysis.priceAction}); Tomorrow projected units = ${pennyAnalysis.tomorrowPredictedUnits}.`;
+        const systemPrompt = `You are ${assistantDisplayName}, an enthusiastic, warm, kid-friendly AI Business Coach inside Seedling for young entrepreneurs ages 6-12.
+Keep replies SHORT, fun, and easy to read (2-3 crisp sentences max). Use simple words and encouraging energy.
+CRITICAL SAFETY RULE: Never output profanity, crude slang, or adult topics. Always stay 100% G-rated and positive for kids.
+Live Shop Data:
+- Founder: ${displayKidName} (Age ${kidAgeGroup})
+- Shop Name: "${displayShopName}"${category ? ` (${category})` : ''}
+- Saving For: "${displayGoalItem}" ($${financialGoal} goal, $${materialCost} supplies, ${durationDays} days)
+- Break-Even: $${breakEvenPoint.toFixed(2)} | Total Target: $${totalTargetRevenue.toFixed(2)} | Daily Target: $${dailySalesTarget.toFixed(2)}/day
+- Earned So Far: $${totalRevenueEarned.toFixed(2)} (${shopInsights.totalLoggedUnits} units sold)
+- Live Local Weather: ${liveWeatherInfo.tempF}°F (${liveWeatherInfo.condition})
+- Products in Menu: ${products.map((p) => `${censorKidSafeText(p.name)} ($${p.price.toFixed(2)})`).join(', ') || 'None added yet'}`;
 
         let replyText = '';
-        // Call Vercel Serverless Proxy (/api/chat) to avoid browser CORS errors
-        const ollamaPayload = JSON.stringify({
-          model: OLLAMA_MODEL_NAME,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...chatMessages.slice(-6).map((m) => ({
-              role: m.role === 'user' ? 'user' : 'assistant',
-              content: censorKidSafeText(m.text)
-            })),
-            { role: 'user', content: censoredUserText }
-          ]
-        });
 
+        // 1. Try Gemini Flash API first
         try {
+          const apiKey = '';
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 8000);
-          const res = await fetch('/api/chat', {
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          const res = await fetch(geminiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             signal: controller.signal,
-            body: ollamaPayload
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: systemPrompt }] },
+              contents: [
+                ...chatMessages.slice(-4).map((m) => ({
+                  role: m.role === 'user' ? 'user' : 'model',
+                  parts: [{ text: censorKidSafeText(m.text) }]
+                })),
+                { role: 'user', parts: [{ text: censoredUserText }] }
+              ]
+            })
           });
           clearTimeout(timeoutId);
           if (res.ok) {
             const data = await res.json();
-            const ollamaContent = data?.choices?.[0]?.message?.content;
-            if (ollamaContent && ollamaContent.trim().length >= 8) {
-              replyText = censorKidSafeText(ollamaContent.trim());
-              setAiEngineStatus('AI Online');
+            const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (candidateText) {
+              replyText = censorKidSafeText(candidateText.trim());
+              setAiEngineStatus('AI Coach Ready');
             }
           }
         } catch (err) {}
 
-        // 2. Natural Human-Sounding Fallback (Full Website, Inventory, Date & Weather Aware)
+        // 2. Try local Ollama server if Gemini wasn't available
+        if (!replyText) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2000);
+            const res = await fetch(ollamaUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              signal: controller.signal,
+              body: JSON.stringify({
+                model: ollamaModel || 'llama3.2',
+                stream: false,
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: censoredUserText }
+                ]
+              })
+            });
+            clearTimeout(timeoutId);
+            if (res.ok) {
+              const data = await res.json();
+              const ollamaReply = data?.message?.content || data?.response;
+              if (ollamaReply) {
+                replyText = censorKidSafeText(ollamaReply.trim());
+                setAiEngineStatus(`Ollama (${ollamaModel})`);
+              }
+            }
+          } catch (err) {}
+        }
+
+        // 3. Guaranteed Smart Local Coach Response
         if (!replyText) {
           setAiEngineStatus('AI Coach Ready');
           const lower = censoredUserText.toLowerCase();
-          const tempF = liveWeatherReport.todayTemp;
-          const isColdOut = tempF < 62;
-          const hotDrinks = products.filter((p) =>
-            /cocoa|hot chocolate|coffee|tea|cider|warm/i.test(p.name)
-          );
-          const coldDrinks = products.filter((p) =>
-            /lemonade|iced|ice cream|snow|slush|smoothie|popsicle|soda|juice|cold/i.test(p.name)
-          );
-          const existingNamesLower = products.map((p) => p.name.toLowerCase());
-
-          // Question: "Is there anything else I could sell that I don't have?" / "What do I not have that I should add?"
-          if (
+          if (lower.includes('weather') || lower.includes('temp') || lower.includes('outside')) {
+            replyText = `It's currently ${liveWeatherInfo.tempF}°F (${liveWeatherInfo.condition}) outside! ${
+              liveWeatherInfo.tempF >= 68
+                ? 'Refreshing cold drinks and fruity treats are super popular in warm weather!'
+                : 'Cozy drinks, baked treats, and fun crafts sell awesome in mild or cool weather!'
+            }`;
+          } else if (lower.includes('price') || lower.includes('cost') || lower.includes('charge')) {
+            replyText = `Your average menu price is $${shopInsights.avgSellingPrice.toFixed(2)} (earning ~$${shopInsights.avgMarginPerItem.toFixed(2)} profit per sale). Selling ${shopInsights.unitsNeededPerDayForGoal} items/day keeps you right on track for $${dailySalesTarget.toFixed(2)}/day!`;
+          } else if (lower.includes('sign') || lower.includes('poster') || lower.includes('ad')) {
+            replyText = `Write: "Fresh Deals at ${displayShopName}! Help ${displayKidName} earn $${financialGoal} for ${displayGoalItem}!" Big colorful letters bring way more neighbors over!`;
+          } else if (lower.includes('bundle') || lower.includes('combo') || lower.includes('badge')) {
+            replyText = `Try a "Bestie Combo"—sell 2 different items together for $0.50 off! You’ll unlock the Bundle Master badge and hit your $${dailySalesTarget.toFixed(2)} daily target faster.`;
+          } else if (
+            lower.includes('not have') ||
             lower.includes("don't have") ||
             lower.includes('dont have') ||
-            lower.includes('not have') ||
-            lower.includes('dont already have') ||
-            lower.includes("don't already have") ||
-            lower.includes('missing') ||
-            lower.includes('anything else') ||
-            lower.includes('something else') ||
-            lower.includes('what else') ||
-            lower.includes('should i add') ||
-            lower.includes('could i add') ||
-            lower.includes('something i should add') ||
-            lower.includes('somthing i should add') ||
-            lower.includes('new item') ||
-            lower.includes('new product') ||
-            (lower.includes('idea') && !lower.includes('sign'))
+            lower.includes('add') ||
+            lower.includes('missing')
           ) {
-            const candidatePool = isColdOut
-              ? [
-                  { name: 'Warm Chocolate Chip Cookies', price: 2.5, why: 'pairs great with Hot Cocoa on a chilly day' },
-                  { name: 'Cinnamon Churros', price: 3.0, why: 'crispy, warm treat that smells amazing' },
-                  { name: 'Warm Chai or Apple Cider', price: 3.0, why: 'cozy spiced drink loved in cool weather' },
-                  { name: 'Baked Empanadas or Samosas', price: 3.5, why: 'savory handheld favorite when it is chilly' },
-                  { name: 'Friendship Bracelets', price: 3.5, why: 'easy to make ahead and sells in any weather' }
-                ]
-              : [
-                  { name: 'Boba Milk Tea', price: 4.0, why: 'super popular refreshing drink with great margins' },
-                  { name: 'Cinnamon Horchata or Agua Fresca', price: 3.0, why: 'refreshing crowd-pleaser on warm days' },
-                  { name: 'Sweet Mochi or Macarons', price: 3.0, why: 'colorful bite-sized treats people love' },
-                  { name: 'Rainbow Snow Cones', price: 3.0, why: 'huge hit in warm weather with low supply cost' },
-                  { name: 'Friendship Bracelets', price: 3.5, why: 'high-margin craft that never melts' }
-                ];
-
-            const freshIdeas = candidatePool
-              .filter((idea) => !existingNamesLower.some((ex) => ex.includes(idea.name.toLowerCase().split(' ')[0])))
-              .slice(0, 3);
-
-            const ideaText = freshIdeas
-              .map((i) => `${i.name} (~$${i.price.toFixed(2)} — ${i.why})`)
-              .join('; ');
-
-            replyText = formatByAge(kidAgeGroup, {
-              young: `Ooh! Since it's ${tempF}°F right now, you could add ${ideaText}! Tell me which one you like and I'll draw its picture and add it!`,
-              kid: `Since you don't have these yet and it's ${tempF}°F in ${liveWeatherReport.locationLabel}, try adding ${ideaText}. Just say "add [item name]" if you want me to put one on your menu!`,
-              tween: `To round out your menu for ${tempF}°F weather, here are 3 things you don't have yet: ${ideaText}. Want me to add one of them to your inventory?`,
-              teen: `To complement your current menu in ${tempF}°F weather, consider adding: ${ideaText}. Say "add [item]" and I'll set it up with a product graphic.`
-            });
-          } else if (
-            // Question: "What should I sell that I have?" / "What should I sell today?"
-            lower.includes('should i sell') ||
-            lower.includes('to sell') ||
-            lower.includes('that i have') ||
-            lower.includes('already have') ||
-            ((lower.includes('what') || lower.includes('which') || lower.includes('recommend') || lower.includes('best')) &&
-              (lower.includes('sell') || lower.includes('item') || lower.includes('product') || lower.includes('today')))
-          ) {
-            if (products.length === 0) {
-              replyText = formatByAge(kidAgeGroup, {
-                young: `You don't have anything on your shelf yet! Tell me what you want to make—like cookies or hot cocoa—and I'll add it for you!`,
-                kid: `Your inventory is empty right now, ${displayKidName}! Tell me an item you'd like to sell (like "add cookies") and we'll get your menu started.`,
-                tween: `You don't have any items in your inventory yet, ${displayKidName}. Tell me what you want to sell and I'll add it to your menu!`,
-                teen: `Your menu is empty right now, ${displayKidName}. Tell me an item to add so we can compare margins and demand for today.`
-              });
-            } else if (isColdOut && hotDrinks.length > 0 && coldDrinks.length > 0) {
-              const hot = hotDrinks[0];
-              const cold = coldDrinks[0];
-              replyText = formatByAge(kidAgeGroup, {
-                young: `Definitely sell your ${hot.name} today! Since it's ${tempF}°F outside on ${todayDateString}, people will want something warm instead of ${cold.name}!`,
-                kid: `I'd focus on selling ${hot.name} ($${hot.price.toFixed(2)}) today! Since it's ${tempF}°F in ${liveWeatherReport.locationLabel} right now, people are way more excited for a warm drink than ${cold.name}.`,
-                tween: `Today (${todayDateString}) is ${tempF}°F in ${liveWeatherReport.locationLabel}, so ${hot.name} ($${hot.price.toFixed(2)}) is your best bet! Chilly weather makes warm drinks outsell ${cold.name} by a mile.`,
-                teen: `With it being ${tempF}°F on ${todayDateString} in ${liveWeatherReport.locationLabel}, push ${hot.name} ($${hot.price.toFixed(2)}, $${(hot.price - hot.unitCost).toFixed(2)} margin) today—cool weather drives way stronger demand for warm drinks than ${cold.name}.`
-              });
-            } else if (!isColdOut && coldDrinks.length > 0 && hotDrinks.length > 0) {
-              const cold = coldDrinks[0];
-              const hot = hotDrinks[0];
-              replyText = formatByAge(kidAgeGroup, {
-                young: `Sell your ${cold.name} today! It's ${tempF}°F outside, so people will love a cold treat way more than ${hot.name}!`,
-                kid: `Go with ${cold.name} ($${cold.price.toFixed(2)}) today! At ${tempF}°F in ${liveWeatherReport.locationLabel}, customers will be thirsty for something cold rather than ${hot.name}.`,
-                tween: `Since it's ${tempF}°F today (${todayDateString}), feature ${cold.name} ($${cold.price.toFixed(2)}) front and center—warm weather beats ${hot.name} every time.`,
-                teen: `At ${tempF}°F on ${todayDateString}, prioritize ${cold.name} ($${cold.price.toFixed(2)}) over ${hot.name} to capture warm-weather thirst demand.`
-              });
-            } else {
-              const sortedByProfit = [...products].sort(
-                (a, b) => b.price - b.unitCost - (a.price - a.unitCost)
-              );
-              const best = sortedByProfit[0];
-              const margin = (best.price - best.unitCost).toFixed(2);
-              replyText = formatByAge(kidAgeGroup, {
-                young: `Your ${best.name} ($${best.price.toFixed(2)}) is an awesome pick to sell today! Every time someone buys one, you make $${margin} in profit!`,
-                kid: `I'd spotlight ${best.name} ($${best.price.toFixed(2)}) today! It earns you $${margin} profit every time you sell one, which gets you closer to your ${displayGoalItem} fast.`,
-                tween: `Today (${todayDateString}, ${tempF}°F), ${best.name} ($${best.price.toFixed(2)}) is your strongest seller—each sale brings in $${margin} net profit toward your ${displayGoalItem}.`,
-                teen: `For ${todayDateString} (${tempF}°F), lead with ${best.name} at $${best.price.toFixed(2)}—it delivers your highest unit profit ($${margin}/sale) toward your ${displayGoalItem} target.`
-              });
-            }
-          } else if (lower.includes('weather') || lower.includes('outside') || lower.includes('rain') || lower.includes('cold') || lower.includes('hot') || lower.includes('temperature')) {
-            const altText =
-              pennyAnalysis.seasonFit.suggestedItems.length > 0
-                ? ` For ${tempF}°F weather, great items to feature are ${pennyAnalysis.seasonFit.suggestedItems.map((i) => i.name).join(', ')}.`
-                : '';
-            replyText = formatByAge(kidAgeGroup, {
-              young: `In ${liveWeatherReport.locationLabel} right now, it's ${tempF}°F! ${liveWeatherReport.todayVerdict}.${altText}`,
-              kid: `Here's the live weather in ${liveWeatherReport.locationLabel}: ${liveWeatherReport.todayVerdict}.${altText}`,
-              tween: `Live check for ${liveWeatherReport.locationLabel}: ${liveWeatherReport.todayVerdict}.${altText}`,
-              teen: `Live telemetry for ${liveWeatherReport.locationLabel}: ${liveWeatherReport.todayVerdict}.${altText}`
-            });
-          } else if (lower.includes('date') || lower.includes('day is it') || lower.includes('what day')) {
-            replyText = `Today is ${todayDateString}, and you're currently on Selling Day ${activeDay} of ${durationDays} at ${displayShopName}!`;
-          } else if (lower.includes('inventory') || lower.includes('menu') || lower.includes('products') || lower.includes('items') || lower.includes('have')) {
-            if (products.length === 0) {
-              replyText = formatByAge(kidAgeGroup, {
-                young: `Your shop menu is empty right now! Tell me what you want to sell, like "add cookies", and I'll draw a picture and add it!`,
-                kid: `You don't have any items in your inventory yet! Tell me something to add (like "add lemonade") or click "+ Add Product" on the right.`,
-                tween: `Your inventory currently has 0 items. You can ask me to add products right here in chat or build your menu in the Goal & Menu tab!`,
-                teen: `Your inventory is currently empty. Tell me any item you'd like to list or add products in the Goal & Menu tab.`
-              });
-            } else {
-              const itemList = products
-                .map((p) => `${p.name} at $${p.price.toFixed(2)} (costs $${p.unitCost.toFixed(2)} to make)`)
-                .join(', ');
-              replyText = formatByAge(kidAgeGroup, {
-                young: `Right now in ${displayShopName}, you have ${itemList}! Want me to add anything else?`,
-                kid: `You've got ${products.length} items in ${displayShopName}: ${itemList}. Want to add another item or figure out which one to push today?`,
-                tween: `Right now ${displayShopName} has ${products.length} items on the menu: ${itemList}. Ask me which one fits today's weather best!`,
-                teen: `${displayShopName} currently has ${products.length} items listed: ${itemList}. Let me know if you want to tweak prices or add another item.`
-              });
-            }
-          } else if (lower.includes('sales') || lower.includes('profit') || lower.includes('earned') || lower.includes('money') || lower.includes('goal') || lower.includes('progress') || lower.includes('make')) {
-            const leftToGoal = Math.max(0, totalTargetRevenue - totalRevenueEarned).toFixed(2);
-            const profitStatus =
-              netProfitEarned >= 0
-                ? `you've already paid off your $${breakEvenPoint.toFixed(2)} supply costs and made $${netProfitEarned.toFixed(2)} in pure profit`
-                : `you have $${Math.abs(netProfitEarned).toFixed(2)} left in sales before your $${breakEvenPoint.toFixed(2)} supply costs are paid off`;
-            replyText = formatByAge(kidAgeGroup, {
-              young: `You've collected $${totalRevenueEarned.toFixed(2)} so far! Only $${leftToGoal} more to buy your ${displayGoalItem}!`,
-              kid: `So far you've made $${totalRevenueEarned.toFixed(2)} in sales, and ${profitStatus}. You only need $${leftToGoal} more to reach your ${displayGoalItem} goal!`,
-              tween: `You've brought in $${totalRevenueEarned.toFixed(2)} across ${salesLog.length} orders, which means ${profitStatus}. You're $${leftToGoal} away from your $${totalTargetRevenue.toFixed(2)} target for ${displayGoalItem}!`,
-              teen: `You've generated $${totalRevenueEarned.toFixed(2)} across ${salesLog.length} orders, so ${profitStatus}. You need $${leftToGoal} more to hit your $${totalTargetRevenue.toFixed(2)} total target for ${displayGoalItem}.`
-            });
-          } else if (lower.includes('badge') || lower.includes('gem') || lower.includes('jar') || lower.includes('website') || lower.includes('how') || lower.includes('help')) {
-            replyText = formatByAge(kidAgeGroup, {
-              young: `You have ${tycoonGems} Tycoon Gems! Sell 2 yummy things at once in the Cash Register to win the Bundle Master badge!`,
-              kid: `You have ${tycoonGems} Tycoon Gems and ${earnedBadges.length} badge(s)! Use Goal & Menu to add items, Cash Register to ring up sales, and Close Shop to split profits into your 3 jars (${jarAllocations.goal}% Goal, ${jarAllocations.supplies}% Supplies, ${jarAllocations.charity}% Charity).`,
-              tween: `In Seedling, you can manage products in Goal & Menu, forecast demand in AI Coach & ML, ring up bundles for +10 Tycoon Gems in Cash Register, and split profits into your 3 Jars (${jarAllocations.goal}% Goal / ${jarAllocations.supplies}% Supplies / ${jarAllocations.charity}% Charity).`,
-              teen: `Seedling connects your full shop workflow: Menu & margins (Goal & Menu), Random Forest demand forecasting (AI Coach & ML), POS checkout with bundle detection (+10 Gems), and 3-Jar profit splits (${jarAllocations.goal}/${jarAllocations.supplies}/${jarAllocations.charity}).`
-            });
-          } else if (lower.includes('price') || lower.includes('cost') || lower.includes('charge')) {
-            replyText = formatByAge(kidAgeGroup, {
-              young: `Charging around $${pennyAnalysis.recommendedPrice.toFixed(2)} is a super smart price for your shop!`,
-              kid: `My smart pricing math suggests $${pennyAnalysis.recommendedPrice.toFixed(2)} (${pennyAnalysis.priceAction}) to help you earn more profit!`,
-              tween: `Based on customer demand and your supply costs ($${pennyAnalysis.avgUnitCost.toFixed(2)} avg), pricing near $${pennyAnalysis.recommendedPrice.toFixed(2)} (${pennyAnalysis.priceAction}) gives you the best profit.`,
-              teen: `Elasticity modeling recommends $${pennyAnalysis.recommendedPrice.toFixed(2)} (${pennyAnalysis.priceAction}) against your $${pennyAnalysis.avgUnitCost.toFixed(2)} average unit cost.`
-            });
-          } else if (lower.includes('predict') || lower.includes('tomorrow') || lower.includes('forecast')) {
-            replyText = formatByAge(kidAgeGroup, {
-              young: `I think you can sell about ${pennyAnalysis.tomorrowPredictedUnits} things tomorrow! Yay!`,
-              kid: `My ML forecaster predicts about ${pennyAnalysis.tomorrowPredictedUnits} sales tomorrow based on your shop data!`,
-              tween: `Combining your sales logs with our Random Forest model, I project about ${pennyAnalysis.tomorrowPredictedUnits} units sold tomorrow.`,
-              teen: `Our Random Forest model forecasts ${pennyAnalysis.tomorrowPredictedUnits} units tomorrow (MAE ${mlEngine.rfMAE} vs. ${mlEngine.baseMAE} persistence baseline).`
-            });
-          } else if (lower.includes('sign') || lower.includes('poster') || lower.includes('idea') || lower.includes('bundle')) {
-            replyText = formatByAge(kidAgeGroup, {
-              young: `Make a bright sign that says: "Welcome to ${displayShopName}! Help me buy ${displayGoalItem}!"`,
-              kid: `Try a "Bestie Bundle" (2 items together) at the Cash Register to earn the Bundle Master badge, and put up a sign for your $${financialGoal} ${displayGoalItem} goal!`,
-              tween: `Promote a 2-item combo deal to boost your average order value and unlock the Bundle Master badge, plus highlight your $${financialGoal} ${displayGoalItem} goal on your stand sign!`,
-              teen: `Bundling 2+ items increases average order value and unlocks the Bundle Master bonus (+10 Gems), while goal-driven signage improves conversion.`
-            });
-          } else if (/^(hi|hello|hey|yo|sup|how are you)/i.test(lower)) {
-            replyText = formatByAge(kidAgeGroup, {
-              young: `Hiya ${displayKidName}! Welcome to ${displayShopName}! What do you want to work on today?`,
-              kid: `Hey ${displayKidName}! Good to see you at ${displayShopName}. Want help picking what to sell today, adding a new item, or checking your goal progress?`,
-              tween: `Hey ${displayKidName}! Welcome back to ${displayShopName} on ${todayDateString}. How can I help with your shop today?`,
-              teen: `Hey ${displayKidName}! ${displayShopName} is ready for ${todayDateString}. Want to look at what to feature today, pricing, or your sales pace?`
-            });
+            const suggestions =
+              liveWeatherInfo.tempF >= 68
+                ? ['Strawberry Lemonade (~$2.50)', 'Mango Agua Fresca (~$3.00)', 'Friendship Bracelets (~$3.50)']
+                : ['Warm Chocolate Chip Cookies (~$2.50)', 'Spiced Chai or Cocoa (~$3.00)', 'Handmade Stickers or Bracelets (~$3.50)'];
+            replyText = `Here are 3 fun items not on your menu yet that fit ${liveWeatherInfo.tempF}°F weather: ${suggestions.join('; ')}. Add any of them in your Menu Builder!`;
+          } else if (lower.includes('hi') || lower.includes('hello') || lower.includes('hey')) {
+            replyText = `Hey ${displayKidName}! Ready to rock ${displayShopName}? You've earned $${totalRevenueEarned.toFixed(2)} so far—ask me for a pricing, sign, or bundle idea!`;
           } else {
-            replyText = formatByAge(kidAgeGroup, {
-              young: `Got it, ${displayKidName}! You're saving up for ${displayGoalItem}—ask me what to sell today, how much money you've made, or tell me to add a new item!`,
-              kid: `I'm here to help with ${displayShopName}, ${displayKidName}! You can ask me what to sell today, how your money and goal are looking, or tell me to add a new product to your menu.`,
-              tween: `Happy to help with ${displayShopName}, ${displayKidName}! Ask me which item fits today's weather best, how close you are to your ${displayGoalItem} goal, or tell me to add a new product.`,
-              teen: `Got it, ${displayKidName}. Ask me what to prioritize in ${displayShopName} today, how your margins and goal progress look, or tell me to add a new product.`
-            });
+            replyText = `Great question, ${displayKidName}! You've earned $${totalRevenueEarned.toFixed(2)} toward your $${totalTargetRevenue.toFixed(2)} goal (${shopInsights.totalLoggedUnits} units logged)—try offering a 2-item combo today!`;
           }
         }
 
@@ -2704,8 +2019,6 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
             setKidName={setKidName}
             kidAgeGroup={kidAgeGroup}
             setKidAgeGroup={setKidAgeGroup}
-            cityLocation={cityLocation}
-            setCityLocation={setCityLocation}
             parentKnows={parentKnows}
             setParentKnows={setParentKnows}
             contactMethod={contactMethod}
@@ -2718,8 +2031,8 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
             setThemeId={setThemeId}
             mascotId={mascotId}
             setMascotId={setMascotId}
-            customAssistantName={customAssistantName}
-            setCustomAssistantName={setCustomAssistantName}
+            customMascotName={customMascotName}
+            setCustomMascotName={setCustomMascotName}
             businessName={businessName}
             setBusinessName={setBusinessName}
             category={category}
@@ -2764,6 +2077,28 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                 </div>
               </button>
 
+              {/* Desktop Navigation Pills */}
+              <nav className="hidden md:flex items-center gap-1.5">
+                {[
+                  { id: 'home', label: '🏡 Home' },
+                  { id: 'setup', label: '🎯 Goal & Menu' },
+                  { id: 'coach', label: '🌱 AI Coach' },
+                  { id: 'pos', label: '🧾 Register' },
+                  { id: 'dashboard', label: '📈 Board' }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-3.5 py-1.5 rounded-full border text-xs font-black transition-all cursor-pointer ${
+                      activeTab === tab.id ? theme.primaryBtn : theme.pillBg
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </nav>
+
+              {/* Right Utility Actions */}
               <div className="flex flex-wrap items-center gap-2">
                 {shopsList.length > 1 && (
                   <select
@@ -2840,7 +2175,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                         Edit
                       </button>
                     </div>
-                    <div className="text-sm font-black text-slate-950">{activeMascot.shortName}</div>
+                    <div className="text-sm font-black text-slate-950">{assistantDisplayName}</div>
                   </div>
                 </div>
 
@@ -2886,19 +2221,19 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
               </div>
             </div>
 
-            {/* Navigation Pill Bar */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-3 pb-1 flex items-center gap-2 overflow-x-auto">
+            {/* Mobile Nav Strip */}
+            <div className="flex md:hidden items-center gap-1.5 overflow-x-auto px-4 pt-3 pb-1">
               {[
                 { id: 'home', label: '🏡 Home' },
                 { id: 'setup', label: '🎯 Goal & Menu' },
-                { id: 'coach', label: '🤖 AI Coach & ML' },
-                { id: 'pos', label: '🧾 Cash Register' },
-                { id: 'dashboard', label: '📈 Tycoon Board' }
+                { id: 'coach', label: '🌱 AI Coach' },
+                { id: 'pos', label: '🧾 Register' },
+                { id: 'dashboard', label: '📈 Board' }
               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-2 rounded-full border-2 text-xs font-black whitespace-nowrap cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-full border text-xs font-black whitespace-nowrap cursor-pointer ${
                     activeTab === tab.id ? theme.primaryBtn : theme.pillBg
                   }`}
                 >
@@ -2908,12 +2243,13 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
             </div>
 
             {/* Active Module Content */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-5">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
               {activeTab === 'home' && (
                 <HomePage
                   theme={theme}
                   kidName={displayKidName}
                   activeMascot={activeMascot}
+                  assistantDisplayName={assistantDisplayName}
                   businessName={displayShopName}
                   setBusinessName={setBusinessName}
                   goalItemName={displayGoalItem}
@@ -2925,8 +2261,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                   totalRevenueEarned={totalRevenueEarned}
                   netProfitEarned={netProfitEarned}
                   products={products}
-                  pennyAnalysis={pennyAnalysis}
-                  liveWeatherReport={liveWeatherReport}
+                  shopInsights={shopInsights}
                   chatMessages={chatMessages}
                   isAiTyping={isAiTyping}
                   onSendChat={handleSendChat}
@@ -2967,25 +2302,33 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                 <PennyCoachPage
                   theme={theme}
                   activeMascot={activeMascot}
-                  customAssistantName={customAssistantName}
-                  setCustomAssistantName={setCustomAssistantName}
+                  assistantDisplayName={assistantDisplayName}
+                  setCustomMascotName={setCustomMascotName}
                   businessName={displayShopName}
                   goalItemName={displayGoalItem}
-                  pennyAnalysis={pennyAnalysis}
-                  liveWeatherReport={liveWeatherReport}
+                  financialGoal={financialGoal}
+                  durationDays={durationDays}
+                  materialCost={materialCost}
+                  totalTargetRevenue={totalTargetRevenue}
+                  dailySalesTarget={dailySalesTarget}
+                  liveWeatherInfo={liveWeatherInfo}
+                  shopInsights={shopInsights}
+                  forecastWeather={forecastWeather}
+                  setForecastWeather={setForecastWeather}
                   forecastDow={forecastDow}
                   setForecastDow={setForecastDow}
+                  ollamaUrl={ollamaUrl}
+                  setOllamaUrl={setOllamaUrl}
+                  ollamaModel={ollamaModel}
+                  setOllamaModel={setOllamaModel}
                   aiEngineStatus={aiEngineStatus}
                   chatMessages={chatMessages}
                   isAiTyping={isAiTyping}
                   onSendChat={handleSendChat}
-                  onAddSuggestedItem={async (item) => {
-                    await addAiSuggestedProductToInventory(item.name, item.price, item.unitCost);
-                  }}
                   onApplyOptimalPrice={() => {
                     setProducts((prev) =>
                       prev.map((p, idx) =>
-                        idx === 0 ? { ...p, price: pennyAnalysis.recommendedPrice } : p
+                        idx === 0 ? { ...p, price: shopInsights.recommendedPrice } : p
                       )
                     );
                   }}
@@ -3028,6 +2371,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                   businessName={displayShopName}
                   goalItemName={displayGoalItem}
                   financialGoal={financialGoal}
+                  materialCost={materialCost}
                   totalTargetRevenue={totalTargetRevenue}
                   dailySalesTarget={dailySalesTarget}
                   breakEvenPoint={breakEvenPoint}
@@ -3084,12 +2428,13 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
               theme={theme}
               kidName={displayKidName}
               mascot={activeMascot}
+              assistantDisplayName={assistantDisplayName}
               goalItemName={displayGoalItem}
               activeDay={activeDay}
               salesLog={salesLog}
               totalRevenueEarned={totalRevenueEarned}
               netProfitEarned={netProfitEarned}
-              pennyAnalysis={pennyAnalysis}
+              shopInsights={shopInsights}
               jarAllocations={jarAllocations}
               setJarAllocations={setJarAllocations}
               onClose={() => setShowShiftWrapUp(false)}
@@ -3104,7 +2449,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
           {/* Footer */}
           <footer className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-5 mt-8 border-t border-black/10 text-center space-y-1">
             <p className={`text-xs font-extrabold ${theme.mutedText}`}>
-              Seedling — Youth Entrepreneurship & AI Demand Forecasting Platform
+              Seedling — Youth Entrepreneurship & AI Business Coach
             </p>
             <p className={`text-[11px] font-bold ${theme.mutedText}`}>
               This project is a prototype and is not financial advice.
@@ -3115,6 +2460,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
           <FloatingMascotCompanion
             theme={theme}
             mascot={activeMascot}
+            assistantDisplayName={assistantDisplayName}
             kidName={displayKidName}
             chatMessages={chatMessages}
             isAiTyping={isAiTyping}
@@ -3131,16 +2477,19 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
       theme,
       kidName,
       activeMascot,
+      assistantDisplayName,
       businessName,
       setBusinessName,
       goalItemName,
+      financialGoal,
+      durationDays,
+      totalTargetRevenue,
       dailySalesTarget,
       breakEvenPoint,
       totalRevenueEarned,
       netProfitEarned,
       products,
-      pennyAnalysis,
-      liveWeatherReport,
+      shopInsights,
       chatMessages,
       isAiTyping,
       onSendChat,
@@ -3189,13 +2538,6 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                 </button>
               </div>
 
-              <div className={`p-3 rounded-2xl border ${theme.innerCream} flex items-center justify-between text-xs`}>
-                <span className="font-bold">🌤️ {liveWeatherReport.locationLabel}</span>
-                <span className="font-black text-emerald-600">
-                  {liveWeatherReport.todayTemp}°F • {pennyAnalysis.verdict}
-                </span>
-              </div>
-
               <div className="grid grid-cols-3 gap-2.5 text-center">
                 <div className={`p-3 rounded-2xl border ${theme.innerCream}`}>
                   <div className="text-[10px] font-extrabold uppercase opacity-75">Break-Even</div>
@@ -3232,13 +2574,13 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
             <div className={`${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-6 space-y-4`}>
               <div className={`p-4 rounded-2xl border ${theme.innerCream} text-center space-y-2`}>
                 <div className="flex justify-center">
-                  <PixelMascot type={activeMascot.id} size={56} isTalking={isAiTyping} />
+                  <PixelMascot type={activeMascot.id} size={58} isTalking={isAiTyping} />
                 </div>
-                <h3 className="text-base font-black">{activeMascot.shortName} AI Business Assistant</h3>
+                <h3 className="text-base font-black">{assistantDisplayName} AI Business Assistant</h3>
                 <p className="text-xs leading-relaxed">
                   {chatMessages.length > 0
                     ? chatMessages[chatMessages.length - 1].text
-                    : `Hey ${kidName}! It's ${liveWeatherReport.todayTemp}°F in ${liveWeatherReport.locationLabel}—ask me what to sell today or tell me to add a product!`}
+                    : shopInsights.tips[0]}
                 </p>
               </div>
 
@@ -3255,7 +2597,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                   type="text"
                   value={quickChatInput}
                   onChange={(e) => setQuickChatInput(e.target.value)}
-                  placeholder={`Ask ${activeMascot.shortName} anything...`}
+                  placeholder={`Ask ${assistantDisplayName} for a tip...`}
                   className={`flex-1 px-3.5 py-2.5 rounded-full border-2 text-xs font-bold outline-none ${theme.inputBg}`}
                 />
                 <button
@@ -3285,7 +2627,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                   className={`group p-4 rounded-3xl border-2 flex flex-col items-center text-center gap-2.5 transition-all hover:border-emerald-400 cursor-pointer ${theme.card}`}
                 >
                   {prod.imageUrl ? (
-                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-br from-sky-100 via-amber-50 to-emerald-100 p-1.5 border-2 border-slate-200/80 overflow-hidden">
+                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-br from-sky-50 via-amber-50 to-emerald-50 p-1 shadow-xs overflow-hidden">
                       <img
                         src={prod.imageUrl}
                         alt={prod.name}
@@ -3316,7 +2658,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
     }
 
     // ============================================================================
-    // MODULE 1: GOAL & MENU BUILDER
+    // MODULE 1: GOAL & MENU BUILDER (BLANK CUSTOM CATEGORY INPUT)
     // ============================================================================
     function GoalSetupPage({
       theme,
@@ -3438,17 +2780,13 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-extrabold mb-1">Category</label>
-                    <select
+                    <input
+                      type="text"
                       value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      className={`w-full px-3 py-2.5 rounded-2xl border-2 text-sm font-bold ${theme.inputBg}`}
-                    >
-                      {CATEGORIES.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.emoji} {c.label}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(e) => setCategory(censorKidSafeText(e.target.value))}
+                      placeholder="Type your category..."
+                      className={`w-full px-3.5 py-2.5 rounded-2xl border-2 text-sm font-bold ${theme.inputBg}`}
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-extrabold mb-1">Saving Up For</label>
@@ -3514,7 +2852,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
             </div>
 
             <div className={`lg:col-span-7 ${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-6 space-y-4`}>
-              <h2 className="text-lg font-black">2. Product Menu & AI Cartoon Stickers</h2>
+              <h2 className="text-lg font-black">2. Product Menu & Global Studio Stickers</h2>
 
               <form onSubmit={handleAddProduct} className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
                 <input
@@ -3522,7 +2860,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                   disabled={isGeneratingImg}
                   value={newItemName}
                   onChange={(e) => setNewItemName(censorKidSafeText(e.target.value))}
-                  placeholder="Item name (e.g. Lemonade, Hot Cocoa)"
+                  placeholder="Item (e.g. Boba, Empanada, Churro, Lemonade)"
                   className={`sm:col-span-5 px-3.5 py-2.5 rounded-2xl border-2 text-sm font-bold ${theme.inputBg}`}
                 />
                 <input
@@ -3561,11 +2899,11 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                   <div className="text-3xl">🎨</div>
                   <div className="font-black text-sm">Your Menu is Empty</div>
                   <p className={`text-xs ${theme.mutedText}`}>
-                    Type an item name and price above—AI will automatically draw a cartoon sticker for it!
+                    Type any food, drink, or craft above—Seedling creates a realistic studio sticker automatically!
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                <div className="space-y-2.5 max-h-72 overflow-y-auto seedling-scroll pr-1">
                   {products.map((prod) => (
                     <div
                       key={prod.id}
@@ -3576,7 +2914,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                           {prod.barcode}
                         </span>
                         {prod.imageUrl ? (
-                          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-100 via-amber-50 to-emerald-100 p-1 border border-slate-200/80 flex-shrink-0 overflow-hidden">
+                          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-50 via-amber-50 to-emerald-50 p-1 shadow-xs flex-shrink-0 overflow-hidden">
                             <img
                               src={prod.imageUrl}
                               alt={prod.name}
@@ -3634,43 +2972,48 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
     }
 
     // ============================================================================
-    // MODULE 2: AI COACH & SIMPLE REAL-DATA FORECASTER
+    // MODULE 2: AI BUSINESS COACH (FULL-HEIGHT CHAT + SIMPLE REAL SHOP FORECAST)
     // ============================================================================
     function PennyCoachPage({
       theme,
       activeMascot,
-      customAssistantName,
-      setCustomAssistantName,
+      assistantDisplayName,
+      setCustomMascotName,
       businessName,
       goalItemName,
-      pennyAnalysis,
-      liveWeatherReport,
+      financialGoal,
+      durationDays,
+      materialCost,
+      totalTargetRevenue,
+      dailySalesTarget,
+      liveWeatherInfo,
+      shopInsights,
+      forecastWeather,
+      setForecastWeather,
       forecastDow,
       setForecastDow,
+      ollamaUrl,
+      setOllamaUrl,
+      ollamaModel,
+      setOllamaModel,
       aiEngineStatus,
       chatMessages,
       isAiTyping,
       onSendChat,
-      onAddSuggestedItem,
       onApplyOptimalPrice,
       onNext,
       onBackHome
     }) {
       const [inputText, setInputText] = useState('');
-      const [addedSuggestionMsg, setAddedSuggestionMsg] = useState('');
-      const [showDetails, setShowDetails] = useState(false);
-      const [isEditingAssistantName, setIsEditingAssistantName] = useState(false);
-      const coachChatEndRef = useRef(null);
-
-      useEffect(() => {
-        coachChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, [chatMessages, isAiTyping]);
+      const [showOllamaConfig, setShowOllamaConfig] = useState(false);
+      const [isRenamingAssistant, setIsRenamingAssistant] = useState(false);
+      const [draftAssistantName, setDraftAssistantName] = useState(assistantDisplayName);
 
       const quickPrompts = [
-        `How are my sales & profit looking?`,
-        `Add Chocolate Chip Cookies to my inventory`,
-        `What should I sell today?`,
-        `Give me a catchy sign idea for ${goalItemName}`
+        `How is the weather outside right now?`,
+        `What could I add to my menu that I don't have?`,
+        `Give me a catchy sign idea for ${goalItemName}`,
+        `How do I earn the Bundle Master badge?`
       ];
 
       const handleSubmit = (e) => {
@@ -3692,7 +3035,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                 <span>Back to Home Hub</span>
               </button>
               <h1 className="text-2xl sm:text-3xl font-black">
-                {activeMascot.shortName} — AI Coach & Weather Forecast
+                {assistantDisplayName} — AI Coach & Shop Forecast
               </h1>
             </div>
 
@@ -3706,41 +3049,53 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+            {/* Full-Height AI Coach Chat Card */}
             <div
-              className={`lg:col-span-7 ${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-5 sm:p-6 flex flex-col space-y-4 min-h-[560px]`}
+              className={`lg:col-span-7 ${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-5 sm:p-6 flex flex-col min-h-[540px]`}
             >
-              <div className="flex items-center justify-between border-b border-black/10 pb-3 shrink-0">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 pb-3">
                 <div className="flex items-center gap-3">
-                  <PixelMascot type={activeMascot.id} size={50} circular isTalking={isAiTyping} />
+                  <PixelMascot type={activeMascot.id} size={48} circular isTalking={isAiTyping} />
                   <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {isEditingAssistantName ? (
+                    {isRenamingAssistant ? (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          setCustomMascotName(censorKidSafeText(draftAssistantName));
+                          setIsRenamingAssistant(false);
+                        }}
+                        className="flex items-center gap-1.5"
+                      >
                         <input
                           type="text"
-                          value={customAssistantName}
-                          onChange={(e) => setCustomAssistantName(censorKidSafeText(e.target.value))}
-                          onBlur={() => setIsEditingAssistantName(false)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') setIsEditingAssistantName(false);
-                          }}
-                          placeholder={activeMascot.shortName}
+                          value={draftAssistantName}
+                          onChange={(e) => setDraftAssistantName(e.target.value)}
                           autoFocus
-                          className={`px-2.5 py-1 rounded-xl border-2 text-sm font-black outline-none ${theme.inputBg}`}
+                          className={`px-2.5 py-1 rounded-xl border text-xs font-black ${theme.inputBg}`}
                         />
-                      ) : (
-                        <>
-                          <span className="font-black text-base">{activeMascot.name}</span>
-                          <button
-                            type="button"
-                            onClick={() => setIsEditingAssistantName(true)}
-                            className={`px-2.5 py-0.5 rounded-full border text-[11px] font-black cursor-pointer ${theme.pillBg}`}
-                          >
-                            ✏️ Rename
-                          </button>
-                        </>
-                      )}
-                    </div>
-                    <div className="text-xs font-bold text-emerald-500 flex items-center gap-1.5 mt-0.5">
+                        <button
+                          type="submit"
+                          className={`px-2.5 py-1 rounded-xl border text-xs font-black cursor-pointer ${theme.primaryBtn}`}
+                        >
+                          Save
+                        </button>
+                      </form>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-base">{assistantDisplayName}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDraftAssistantName(assistantDisplayName);
+                            setIsRenamingAssistant(true);
+                          }}
+                          className="text-[11px] font-extrabold underline opacity-75 hover:opacity-100 cursor-pointer"
+                        >
+                          ✏️ Rename
+                        </button>
+                      </div>
+                    )}
+                    <div className="text-xs font-bold text-emerald-500 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
                       <span>
                         {aiEngineStatus} • {businessName}
@@ -3748,13 +3103,51 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                     </div>
                   </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowOllamaConfig(!showOllamaConfig)}
+                  className={`px-3 py-1 rounded-full border text-[11px] font-black cursor-pointer ${theme.pillBg}`}
+                >
+                  🦙 Ollama Config
+                </button>
               </div>
 
-              <div className={`p-4 rounded-2xl border ${theme.innerCream} flex-1 min-h-[340px] max-h-[520px] overflow-y-auto space-y-3`}>
+              {showOllamaConfig && (
+                <div
+                  className={`mt-3 p-3.5 rounded-2xl border ${theme.innerCream} grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs`}
+                >
+                  <div>
+                    <label className="block font-extrabold mb-1">Ollama API Endpoint</label>
+                    <input
+                      type="text"
+                      value={ollamaUrl}
+                      onChange={(e) => setOllamaUrl(e.target.value)}
+                      className={`w-full px-3 py-1.5 rounded-xl border font-mono text-xs ${theme.inputBg}`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-extrabold mb-1">Ollama Model Name</label>
+                    <input
+                      type="text"
+                      value={ollamaModel}
+                      onChange={(e) => setOllamaModel(e.target.value)}
+                      placeholder="llama3.2"
+                      className={`w-full px-3 py-1.5 rounded-xl border font-mono text-xs ${theme.inputBg}`}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Scrollable Chat History Filling Full Card Area */}
+              <div className="flex-1 min-h-[300px] max-h-[460px] overflow-y-auto seedling-scroll space-y-3 py-4 pr-1">
                 <div className="flex items-start gap-2.5">
                   <PixelMascot type={activeMascot.id} size={34} circular />
-                  <div className={`p-3.5 rounded-2xl rounded-tl-sm border text-xs sm:text-sm leading-relaxed max-w-[85%] ${theme.card}`}>
-                    Hey there! I see your menu, real sales logs, and live weather in {liveWeatherReport.locationLabel}. Ask me anything or tell me to add a product!
+                  <div className={`p-3.5 rounded-2xl rounded-tl-sm border text-xs sm:text-sm leading-relaxed max-w-[85%] ${theme.innerCream}`}>
+                    Hey! Right now it’s <strong>{liveWeatherInfo.tempF}°F ({liveWeatherInfo.condition})</strong> outside.
+                    To reach your <strong>${dailySalesTarget.toFixed(2)}/day</strong> goal for{' '}
+                    <strong>{goalItemName}</strong>, aim for about{' '}
+                    <strong>{shopInsights.unitsNeededPerDayForGoal} sales/day</strong>! Ask me anything or ask for new menu ideas!
                   </div>
                 </div>
 
@@ -3770,7 +3163,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                       className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed max-w-[85%] whitespace-pre-line ${
                         msg.role === 'user'
                           ? `${theme.primaryBtn} rounded-tr-sm font-bold`
-                          : `${theme.card} border rounded-tl-sm`
+                          : `${theme.innerCream} border rounded-tl-sm`
                       }`}
                     >
                       {msg.text}
@@ -3781,13 +3174,12 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                 {isAiTyping && (
                   <div className="flex items-center gap-2 text-xs font-extrabold opacity-75">
                     <PixelMascot type={activeMascot.id} size={28} circular isTalking />
-                    <span>{activeMascot.shortName} is thinking...</span>
+                    <span>{assistantDisplayName} is thinking...</span>
                   </div>
                 )}
-                <div ref={coachChatEndRef} />
               </div>
 
-              <div className="space-y-2.5 pt-2 border-t border-black/10 shrink-0">
+              <div className="space-y-2.5 pt-3 border-t border-black/10">
                 <div className="flex flex-wrap gap-1.5">
                   {quickPrompts.map((prompt) => (
                     <button
@@ -3806,7 +3198,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                     type="text"
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
-                    placeholder={`Chat with ${activeMascot.shortName}...`}
+                    placeholder={`Chat with ${assistantDisplayName}...`}
                     className={`flex-1 px-4 py-3 rounded-full border-2 text-sm font-bold outline-none ${theme.inputBg}`}
                   />
                   <button
@@ -3820,48 +3212,34 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
               </div>
             </div>
 
-            {/* Clean, Simple Right-Side Forecast Card with 100% Real Data */}
+            {/* Simple, Real-Stats Shop Forecast & Tips Panel */}
             <div className="lg:col-span-5">
-              <div className={`${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-5 space-y-4`}>
+              <div className={`${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-5 sm:p-6 space-y-4`}>
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="text-lg font-black">Shop Forecast & Tips</h2>
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-black ${
-                      liveWeatherReport.isGoodToday
-                        ? 'bg-emerald-500 text-slate-950'
-                        : liveWeatherReport.isBadToday
-                        ? 'bg-rose-400 text-slate-950'
-                        : 'bg-amber-300 text-slate-950'
-                    }`}
-                  >
-                    {liveWeatherReport.todayTemp}°F • {liveWeatherReport.locationLabel}
+                  <span className={`px-3 py-1 rounded-full border text-xs font-black ${theme.accentBadge}`}>
+                    🌤️ {liveWeatherInfo.tempF}°F Live
                   </span>
                 </div>
 
-                {/* 1. Simple Tomorrow Estimate */}
-                <div className={`p-4 rounded-2xl border ${theme.innerCream} space-y-3`}>
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <div className="text-xs font-black uppercase opacity-70">Tomorrow’s Estimate</div>
-                      <div className="text-3xl font-black mt-0.5">
-                        ~{pennyAnalysis.tomorrowPredictedUnits} sales
-                      </div>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full border text-xs font-black ${theme.accentBadge}`}>
-                      {pennyAnalysis.verdict}
-                    </span>
-                  </div>
-
-                  <p className={`text-xs ${theme.mutedText}`}>
-                    {pennyAnalysis.loggedDaysCount > 0
-                      ? `Based on your real average of ${pennyAnalysis.avgDailyUnits} sales/day across ${pennyAnalysis.loggedDaysCount} day(s) + ${liveWeatherReport.tomorrowTemp}°F weather.`
-                      : `No sales logged yet—estimating from ${liveWeatherReport.tomorrowTemp}°F weather & your $${pennyAnalysis.avgSellingPrice.toFixed(2)} menu price.`}
-                  </p>
-
+                {/* Weather & Selling Day Selector */}
+                <div className="grid grid-cols-2 gap-2.5">
                   <div>
-                    <label className="block text-[11px] font-extrabold opacity-75 mb-1">
-                      Selling Day
-                    </label>
+                    <label className="block text-[11px] font-extrabold mb-1">Weather Outlook</label>
+                    <select
+                      value={forecastWeather}
+                      onChange={(e) => setForecastWeather(e.target.value)}
+                      className={`w-full px-3 py-2 rounded-xl border-2 text-xs font-black ${theme.inputBg}`}
+                    >
+                      {WEATHER_OPTIONS.map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-extrabold mb-1">Selling Day</label>
                     <select
                       value={forecastDow}
                       onChange={(e) => setForecastDow(e.target.value)}
@@ -3876,115 +3254,62 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                   </div>
                 </div>
 
-                {/* 2. Weather & Menu Advice */}
-                <div
-                  className={`p-4 rounded-2xl border-2 ${
-                    pennyAnalysis.seasonFit.status.startsWith('mismatch')
-                      ? 'border-rose-400'
-                      : 'border-emerald-400/60'
-                  } ${theme.innerCream} space-y-2.5`}
-                >
-                  <div className="text-xs font-black uppercase text-emerald-600">
-                    💡 Weather & Menu Tip
-                  </div>
-                  <div className="text-sm font-black">{pennyAnalysis.priceAction}</div>
-                  <p className={`text-xs leading-relaxed ${theme.mutedText}`}>
-                    {pennyAnalysis.seasonFit.explanation}
-                  </p>
-
-                  {pennyAnalysis.seasonFit.suggestedItems.length > 0 && (
-                    <div className="space-y-1.5 pt-1">
-                      <div className="text-[11px] font-black text-rose-500">
-                        Better fits for {liveWeatherReport.todayTemp}°F weather:
-                      </div>
-                      {pennyAnalysis.seasonFit.suggestedItems.map((sug) => (
-                        <div
-                          key={sug.name}
-                          className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 text-xs ${theme.card}`}
-                        >
-                          <div>
-                            <div className="font-black">
-                              {sug.name} (${sug.price.toFixed(2)})
-                            </div>
-                            <div className={`text-[11px] ${theme.mutedText}`}>{sug.reason}</div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              await onAddSuggestedItem(sug);
-                              setAddedSuggestionMsg(`Added ${sug.name}!`);
-                              setTimeout(() => setAddedSuggestionMsg(''), 2500);
-                            }}
-                            className={`px-3 py-1.5 rounded-full border font-black text-[11px] whitespace-nowrap cursor-pointer ${theme.primaryBtn}`}
-                          >
-                            + Add
-                          </button>
-                        </div>
-                      ))}
-                      {addedSuggestionMsg && (
-                        <div className="text-xs font-black text-emerald-600">✅ {addedSuggestionMsg}</div>
-                      )}
+                {/* Tomorrow's Real Sales Goal & Estimate */}
+                <div className={`p-4 rounded-2xl border-2 border-sky-400/50 ${theme.innerCream} flex items-center justify-between gap-3`}>
+                  <div>
+                    <div className="text-[11px] font-black uppercase text-sky-600">
+                      Tomorrow’s Sales Estimate
                     </div>
-                  )}
-
-                  {pennyAnalysis.seasonFit.priceDirection !== 'avoid' &&
-                    pennyAnalysis.recommendedPrice !== pennyAnalysis.avgSellingPrice && (
-                      <button
-                        type="button"
-                        onClick={onApplyOptimalPrice}
-                        className={`w-full py-2.5 rounded-full border-2 font-black text-xs cursor-pointer ${theme.primaryBtn}`}
-                      >
-                        Update Price to ${pennyAnalysis.recommendedPrice.toFixed(2)} →
-                      </button>
-                    )}
+                    <div className="text-3xl font-black mt-0.5">
+                      {shopInsights.tomorrowPredictedUnits} units
+                    </div>
+                    <div className={`text-[11px] mt-0.5 ${theme.mutedText}`}>
+                      {shopInsights.avgLoggedUnitsPerDay !== null
+                        ? `Based on your real ${shopInsights.avgLoggedUnitsPerDay} units/day log average`
+                        : `Goal pace: ${shopInsights.unitsNeededPerDayForGoal} units/day at $${shopInsights.avgSellingPrice.toFixed(2)} avg`}
+                    </div>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full border text-xs font-black ${theme.accentBadge}`}>
+                    ${dailySalesTarget.toFixed(2)}/day
+                  </span>
                 </div>
 
-                {/* 3. Real Shop Stats & Expandable Limitations */}
-                <div className={`p-3.5 rounded-2xl border ${theme.innerCream} space-y-2`}>
-                  <button
-                    type="button"
-                    onClick={() => setShowDetails(!showDetails)}
-                    className="w-full flex items-center justify-between text-xs font-black cursor-pointer"
-                  >
-                    <span>📊 Your Real Shop Stats & Forecast Notes</span>
-                    <span>{showDetails ? '▲' : '▼'}</span>
-                  </button>
-
-                  {showDetails && (
-                    <div className="pt-2 border-t border-black/10 space-y-2.5 text-xs">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className={`p-2.5 rounded-xl border ${theme.card}`}>
-                          <div className="text-[10px] font-bold opacity-75">Real Sales Logged</div>
-                          <div className="font-black text-sm mt-0.5">
-                            {pennyAnalysis.totalLoggedUnits} items ({pennyAnalysis.loggedDaysCount}d)
-                          </div>
-                        </div>
-                        <div className={`p-2.5 rounded-xl border ${theme.card}`}>
-                          <div className="text-[10px] font-bold opacity-75">Avg Profit / Item</div>
-                          <div className="font-black text-sm text-emerald-600 mt-0.5">
-                            ${pennyAnalysis.avgUnitProfit.toFixed(2)}
-                          </div>
-                        </div>
-                      </div>
-
-                      {pennyAnalysis.realDayVariances.length > 0 ? (
-                        <div className="space-y-1.5">
-                          <div className="text-[11px] font-black">
-                            Real Day-to-Day Changes (Avg Swing: {pennyAnalysis.realAvgDaySwing} units):
-                          </div>
-                          {pennyAnalysis.realDayVariances.map((v) => (
-                            <div key={v.dayLabel} className={`p-2 rounded-xl border text-[11px] ${theme.card}`}>
-                              <strong>{v.dayLabel}:</strong> {v.reason}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className={`text-[11px] leading-relaxed ${theme.mutedText}`}>
-                          Log sales across 2 or more days in the Cash Register to see your real day-to-day accuracy and sales swings here. Weather and sudden local events can always change foot traffic!
-                        </p>
-                      )}
-                    </div>
+                {/* Real Menu Profit & Pricing Check */}
+                <div className={`p-4 rounded-2xl border-2 border-emerald-400/60 ${theme.innerCream} space-y-2.5`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-black uppercase text-emerald-600">
+                      💡 Real Menu Profit Check
+                    </span>
+                    <span className="text-xs font-black text-emerald-600">
+                      +${shopInsights.avgMarginPerItem.toFixed(2)} profit/sale
+                    </span>
+                  </div>
+                  <div className="text-sm font-black">{shopInsights.priceAction}</div>
+                  <p className={`text-xs leading-relaxed ${theme.mutedText}`}>
+                    Your menu averages <strong>${shopInsights.avgSellingPrice.toFixed(2)}</strong> per item with{' '}
+                    <strong>${shopInsights.avgUnitCost.toFixed(2)}</strong> supply cost.
+                  </p>
+                  {shopInsights.recommendedPrice > shopInsights.avgSellingPrice && (
+                    <button
+                      type="button"
+                      onClick={onApplyOptimalPrice}
+                      className={`w-full py-2.5 rounded-full border-2 font-black text-xs cursor-pointer ${theme.primaryBtn}`}
+                    >
+                      Apply ${shopInsights.recommendedPrice.toFixed(2)} to First Item →
+                    </button>
                   )}
+                </div>
+
+                {/* Real Logged Stats Summary */}
+                <div className={`p-4 rounded-2xl border ${theme.innerCream} grid grid-cols-2 gap-3 text-center`}>
+                  <div>
+                    <div className="text-[10px] font-extrabold uppercase opacity-75">Real Units Logged</div>
+                    <div className="text-lg font-black text-emerald-500">{shopInsights.totalLoggedUnits} units</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-extrabold uppercase opacity-75">Active Selling Days</div>
+                    <div className="text-lg font-black text-sky-500">{shopInsights.activeSellingDays} day(s)</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -4107,7 +3432,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                 type="text"
                 value={quickName}
                 onChange={(e) => setQuickName(censorKidSafeText(e.target.value))}
-                placeholder="Quick item name (e.g. Cookie)"
+                placeholder="Quick item name (e.g. Cookie, Boba)"
                 className={`sm:col-span-6 px-3.5 py-2.5 rounded-2xl border-2 text-sm font-bold ${theme.inputBg}`}
               />
               <input
@@ -4172,7 +3497,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                       >
                         <div className="flex items-center gap-3.5">
                           {prod.imageUrl ? (
-                            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-sky-100 via-amber-50 to-emerald-100 p-1 border-2 border-slate-200/80 flex-shrink-0 overflow-hidden">
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-sky-50 via-amber-50 to-emerald-50 p-1 shadow-xs flex-shrink-0 overflow-hidden">
                               <img
                                 src={prod.imageUrl}
                                 alt={prod.name}
@@ -4261,7 +3586,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                  <div className="space-y-2.5 max-h-56 overflow-y-auto seedling-scroll pr-1">
                     {cart.map((item) => (
                       <div
                         key={item.id}
@@ -4269,7 +3594,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                       >
                         <div className="flex items-center gap-3">
                           {item.imageUrl ? (
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-100 via-amber-50 to-emerald-100 p-0.5 border border-slate-200/80 flex-shrink-0 overflow-hidden">
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-50 via-amber-50 to-emerald-50 p-0.5 shadow-xs flex-shrink-0 overflow-hidden">
                               <img
                                 src={item.imageUrl}
                                 alt={item.name}
@@ -4417,6 +3742,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
       businessName,
       goalItemName,
       financialGoal,
+      materialCost,
       totalTargetRevenue,
       dailySalesTarget,
       breakEvenPoint,
@@ -4712,7 +4038,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                  <div className="space-y-2.5 max-h-60 overflow-y-auto seedling-scroll pr-1">
                     {salesLog.map((tx) => (
                       <div
                         key={tx.id}
@@ -4754,18 +4080,19 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
     }
 
     // ============================================================================
-    // END-OF-DAY SHIFT WRAP-UP & 3-JAR PROFIT SPLITTER MODAL
+    // END-OF-DAY SHIFT WRAP-UP REPORT & INTERACTIVE 3-JAR PROFIT SPLITTER MODAL
     // ============================================================================
     function ShiftWrapUpModal({
       theme,
       kidName,
       mascot,
+      assistantDisplayName,
       goalItemName,
       activeDay,
       salesLog,
       totalRevenueEarned,
       netProfitEarned,
-      pennyAnalysis,
+      shopInsights,
       jarAllocations,
       setJarAllocations,
       onClose,
@@ -4830,7 +4157,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
 
             <div className={`p-4 rounded-2xl border ${theme.innerCream} space-y-2 text-sm`}>
               <div className="font-black text-emerald-500 text-xs uppercase">
-                {mascot.shortName}’s 3-Bullet Shift Summary
+                {assistantDisplayName}’s 3-Bullet Shift Summary
               </div>
               <ul className="space-y-1.5 font-bold text-xs sm:text-sm">
                 <li>
@@ -4844,8 +4171,9 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                   )
                 </li>
                 <li>
-                  🤖 <strong>Tomorrow’s ML Projection:</strong> Aim to sell{' '}
-                  <strong>{pennyAnalysis.tomorrowPredictedUnits} units</strong> to stay on track for {goalItemName}!
+                  🌱 <strong>Tomorrow’s Shop Estimate:</strong> Aim for{' '}
+                  <strong>{shopInsights.tomorrowPredictedUnits} units</strong> during{' '}
+                  {shopInsights.weatherObj.label} to stay on track for {goalItemName}!
                 </li>
               </ul>
             </div>
