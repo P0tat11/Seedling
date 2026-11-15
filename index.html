@@ -2135,26 +2135,35 @@
                 .join('; ')
             : 'No products in inventory yet';
 
-        const systemPrompt = `You are ${activeMascot.shortName}, a natural, warm conversational AI Business Mentor inside the Seedling web app (${SITE_BASE_URL}).
+        const todayDateString = new Date().toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+
+        const systemPrompt = `You are ${activeMascot.shortName}, a genuine, friendly, down-to-earth human-sounding business mentor inside the Seedling app (${SITE_BASE_URL}).
 ${ageToneInstruction}
 CRITICAL CONVERSATION RULES:
-- Respond naturally like a real mentor. Answer what the user actually asked!
-- DO NOT bring up weather unless the user specifically asks about weather, temperature, seasons, or outdoor conditions.
-- You have full visibility into the entire Seedling website and all of ${displayKidName}'s live data below. Use exact numbers from this snapshot whenever helpful!
-- Keep replies concise (2-4 crisp sentences). Stay 100% G-rated.
+- Talk like a real, helpful person—NEVER recite raw stats in parentheses like "(2 SKUs, $0.00 revenue, $-50.00 net profit)" unless asked!
+- Always directly answer the user's actual question using common sense + their real shop data below.
+- If the user asks what they should sell today from their inventory, compare the actual items they have in stock against today's date (${todayDateString}) and live weather (${liveWeatherReport.todayTemp}°F in ${liveWeatherReport.locationLabel}), and recommend the best item(s) with a natural explanation!
+- Only bring up weather when relevant to their question (like deciding what to sell today, outdoor setup, or seasonal items).
+- Keep replies warm, natural, and concise (2-4 sentences). Stay 100% G-rated.
 
-FULL WEBSITE & SHOP SNAPSHOT:
-- Current Page/Tab Open: "${activeTab}" (Tabs available: Home, Goal & Menu, AI Coach & ML, Cash Register, Tycoon Board)
+FULL LIVE WEBSITE & SHOP CONTEXT:
+- Today's Date: ${todayDateString}
+- Current Page/Tab Open: "${activeTab}" (Tabs: Home, Goal & Menu, AI Coach & ML, Cash Register, Tycoon Board)
 - Founder: ${displayKidName} (Age group: ${kidAgeGroup}) | Location: ${liveWeatherReport.locationLabel}
-- Shop Name: "${displayShopName}" | Shop Status: ${shopOpen ? 'OPEN for customers' : 'CLOSED for the day'} | Active Selling Day: Day ${activeDay} of ${durationDays}
-- Savings Goal: $${financialGoal} for "${displayGoalItem}" | Supply Costs: $${materialCost} | Break-Even Point: $${breakEvenPoint.toFixed(2)} | Total Revenue Target: $${totalTargetRevenue.toFixed(2)} | Daily Target: $${dailySalesTarget.toFixed(2)}/day
-- Financial Performance: Total Revenue Earned = $${totalRevenueEarned.toFixed(2)} | Net Profit = $${netProfitEarned.toFixed(2)} (${hasBrokenEven ? 'Profit Zone Unlocked!' : `$${Math.max(0, breakEvenPoint - totalRevenueEarned).toFixed(2)} left to break even`})
-- Tycoon Gems: ${tycoonGems} | Earned Badges: ${earnedBadges.length > 0 ? earnedBadges.join(', ') : 'None yet (sell 2+ items together for Bundle Master)'}
-- 3-Jar Profit Split Settings: Goal ${jarAllocations.goal}%, Next Supplies ${jarAllocations.supplies}%, Charity ${jarAllocations.charity}%
+- Live Weather Today: ${liveWeatherReport.todayTemp}°F — ${liveWeatherReport.todayVerdict}
+- Shop Name: "${displayShopName}" | Status: ${shopOpen ? 'OPEN' : 'CLOSED'} | Selling Day ${activeDay} of ${durationDays}
+- Savings Goal: $${financialGoal} for "${displayGoalItem}" | Supply Costs: $${materialCost} | Break-Even: $${breakEvenPoint.toFixed(2)} | Total Target: $${totalTargetRevenue.toFixed(2)} | Daily Target: $${dailySalesTarget.toFixed(2)}/day
+- Money Earned So Far: Total Revenue = $${totalRevenueEarned.toFixed(2)} | Net Profit = $${netProfitEarned.toFixed(2)} (${hasBrokenEven ? 'Supplies paid off!' : `$${Math.max(0, breakEvenPoint - totalRevenueEarned).toFixed(2)} left to break even`})
+- Tycoon Gems: ${tycoonGems} | Earned Badges: ${earnedBadges.length > 0 ? earnedBadges.join(', ') : 'None yet'}
+- 3-Jar Profit Split: Goal ${jarAllocations.goal}%, Next Supplies ${jarAllocations.supplies}%, Charity ${jarAllocations.charity}%
 - Complete Inventory (${products.length} items): ${fullInventorySummary}
-- Recent Sales Log (${salesLog.length} total orders): ${topSellingSummary}
-- ML Forecaster & Seasonal Fit: Recommended price $${pennyAnalysis.recommendedPrice.toFixed(2)} (${pennyAnalysis.priceAction}); Tomorrow ML forecast = ${pennyAnalysis.tomorrowPredictedUnits} units (Random Forest MAE ${mlEngine.rfMAE} vs Baseline MAE ${mlEngine.baseMAE}).
-- Live Weather (only use if asked): ${liveWeatherReport.todayVerdict}.`;
+- Recent Sales Log (${salesLog.length} orders): ${topSellingSummary}
+- ML Forecast: Recommended price $${pennyAnalysis.recommendedPrice.toFixed(2)} (${pennyAnalysis.priceAction}); Tomorrow projected units = ${pennyAnalysis.tomorrowPredictedUnits}.`;
 
         let replyText = '';
         // Call Vercel Serverless Proxy (/api/chat) to avoid browser CORS errors
@@ -2172,7 +2181,7 @@ FULL WEBSITE & SHOP SNAPSHOT:
 
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 7000);
+          const timeoutId = setTimeout(() => controller.abort(), 8000);
           const res = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2190,65 +2199,125 @@ FULL WEBSITE & SHOP SNAPSHOT:
           }
         } catch (err) {}
 
-        // 2. Natural Age-Adapted Conversational Fallback (Full Website Aware — NO weather spam!)
+        // 2. Natural Human-Sounding Fallback (Full Website, Inventory, Date & Weather Aware)
         if (!replyText) {
           setAiEngineStatus('AI Coach Ready');
           const lower = censoredUserText.toLowerCase();
-          if (lower.includes('weather') || lower.includes('outside') || lower.includes('rain') || lower.includes('cold') || lower.includes('hot')) {
+          const tempF = liveWeatherReport.todayTemp;
+          const isColdOut = tempF < 62;
+          const hotDrinks = products.filter((p) =>
+            /cocoa|hot chocolate|coffee|tea|cider|warm/i.test(p.name)
+          );
+          const coldDrinks = products.filter((p) =>
+            /lemonade|snow|ice|popsicle|slush|iced|cold|smoothie/i.test(p.name)
+          );
+
+          // Question: "What should I sell today / from my inventory?"
+          if (
+            (lower.includes('what') || lower.includes('which') || lower.includes('recommend') || lower.includes('best')) &&
+            (lower.includes('sell') || lower.includes('item') || lower.includes('product') || lower.includes('today'))
+          ) {
+            if (products.length === 0) {
+              replyText = formatByAge(kidAgeGroup, {
+                young: `You don't have anything on your shelf yet! Tell me what you want to make—like cookies or hot cocoa—and I'll add it for you!`,
+                kid: `Your inventory is empty right now, ${displayKidName}! Tell me an item you'd like to sell (like "add cookies") and we'll get your menu started.`,
+                tween: `You don't have any items in your inventory yet, ${displayKidName}. Tell me what you want to sell and I'll add it to your menu!`,
+                teen: `Your menu is empty right now, ${displayKidName}. Tell me an item to add so we can compare margins and demand for today.`
+              });
+            } else if (isColdOut && hotDrinks.length > 0 && coldDrinks.length > 0) {
+              const hot = hotDrinks[0];
+              const cold = coldDrinks[0];
+              replyText = formatByAge(kidAgeGroup, {
+                young: `Definitely sell your ${hot.name} today! Since it's ${tempF}°F outside on ${todayDateString}, people will want something warm instead of ${cold.name}!`,
+                kid: `I'd focus on selling ${hot.name} ($${hot.price.toFixed(2)}) today! Since it's ${tempF}°F in ${liveWeatherReport.locationLabel} right now, people are way more excited for a warm drink than ${cold.name}.`,
+                tween: `Today (${todayDateString}) is ${tempF}°F in ${liveWeatherReport.locationLabel}, so ${hot.name} ($${hot.price.toFixed(2)}) is your best bet! Chilly weather makes warm drinks outsell ${cold.name} by a mile.`,
+                teen: `With it being ${tempF}°F on ${todayDateString} in ${liveWeatherReport.locationLabel}, push ${hot.name} ($${hot.price.toFixed(2)}, $${(hot.price - hot.unitCost).toFixed(2)} margin) today—cool weather drives way stronger demand for warm drinks than ${cold.name}.`
+              });
+            } else if (!isColdOut && coldDrinks.length > 0 && hotDrinks.length > 0) {
+              const cold = coldDrinks[0];
+              const hot = hotDrinks[0];
+              replyText = formatByAge(kidAgeGroup, {
+                young: `Sell your ${cold.name} today! It's ${tempF}°F outside, so people will love a cold treat way more than ${hot.name}!`,
+                kid: `Go with ${cold.name} ($${cold.price.toFixed(2)}) today! At ${tempF}°F in ${liveWeatherReport.locationLabel}, customers will be thirsty for something cold rather than ${hot.name}.`,
+                tween: `Since it's ${tempF}°F today (${todayDateString}), feature ${cold.name} ($${cold.price.toFixed(2)}) front and center—warm weather beats ${hot.name} every time.`,
+                teen: `At ${tempF}°F on ${todayDateString}, prioritize ${cold.name} ($${cold.price.toFixed(2)}) over ${hot.name} to capture warm-weather thirst demand.`
+              });
+            } else {
+              const sortedByProfit = [...products].sort(
+                (a, b) => b.price - b.unitCost - (a.price - a.unitCost)
+              );
+              const best = sortedByProfit[0];
+              const margin = (best.price - best.unitCost).toFixed(2);
+              replyText = formatByAge(kidAgeGroup, {
+                young: `Your ${best.name} ($${best.price.toFixed(2)}) is an awesome pick to sell today! Every time someone buys one, you make $${margin} in profit!`,
+                kid: `I'd spotlight ${best.name} ($${best.price.toFixed(2)}) today! It earns you $${margin} profit every time you sell one, which gets you closer to your ${displayGoalItem} fast.`,
+                tween: `Today (${todayDateString}, ${tempF}°F), ${best.name} ($${best.price.toFixed(2)}) is your strongest seller—each sale brings in $${margin} net profit toward your ${displayGoalItem}.`,
+                teen: `For ${todayDateString} (${tempF}°F), lead with ${best.name} at $${best.price.toFixed(2)}—it delivers your highest unit profit ($${margin}/sale) toward your ${displayGoalItem} target.`
+              });
+            }
+          } else if (lower.includes('date') || lower.includes('day is it') || lower.includes('today')) {
+            replyText = `Today is ${todayDateString}, and you're currently on Selling Day ${activeDay} of ${durationDays} at ${displayShopName}!`;
+          } else if (lower.includes('weather') || lower.includes('outside') || lower.includes('rain') || lower.includes('cold') || lower.includes('hot')) {
             const altText =
               pennyAnalysis.seasonFit.suggestedItems.length > 0
-                ? ` For ${liveWeatherReport.todayTemp}°F weather, great items to sell are ${pennyAnalysis.seasonFit.suggestedItems.map((i) => i.name).join(', ')}.`
+                ? ` For ${tempF}°F weather, great items to feature are ${pennyAnalysis.seasonFit.suggestedItems.map((i) => i.name).join(', ')}.`
                 : '';
             replyText = formatByAge(kidAgeGroup, {
-              young: `I checked ${liveWeatherReport.locationLabel}! ${liveWeatherReport.todayVerdict}.${altText}`,
+              young: `In ${liveWeatherReport.locationLabel} right now, it's ${tempF}°F! ${liveWeatherReport.todayVerdict}.${altText}`,
               kid: `Here's the live weather in ${liveWeatherReport.locationLabel}: ${liveWeatherReport.todayVerdict}.${altText}`,
               tween: `Live check for ${liveWeatherReport.locationLabel}: ${liveWeatherReport.todayVerdict}.${altText}`,
               teen: `Live telemetry for ${liveWeatherReport.locationLabel}: ${liveWeatherReport.todayVerdict}.${altText}`
             });
-          } else if (lower.includes('inventory') || lower.includes('menu') || lower.includes('products') || lower.includes('items') || lower.includes('selling')) {
+          } else if (lower.includes('inventory') || lower.includes('menu') || lower.includes('products') || lower.includes('items') || lower.includes('have')) {
             if (products.length === 0) {
               replyText = formatByAge(kidAgeGroup, {
                 young: `Your shop menu is empty right now! Tell me what you want to sell, like "add cookies", and I'll draw a picture and add it!`,
                 kid: `You don't have any items in your inventory yet! Tell me something to add (like "add lemonade") or click "+ Add Product" on the right.`,
                 tween: `Your inventory currently has 0 items. You can ask me to add products right here in chat or build your menu in the Goal & Menu tab!`,
-                teen: `Your inventory is currently empty (0 SKUs). Tell me any item you'd like to list or add products in the Goal & Menu tab.`
+                teen: `Your inventory is currently empty. Tell me any item you'd like to list or add products in the Goal & Menu tab.`
               });
             } else {
-              const itemList = products.map((p) => `${p.name} ($${p.price.toFixed(2)})`).join(', ');
+              const itemList = products
+                .map((p) => `${p.name} at $${p.price.toFixed(2)} (costs $${p.unitCost.toFixed(2)} to make)`)
+                .join(', ');
               replyText = formatByAge(kidAgeGroup, {
-                young: `You have ${products.length} awesome things in your shop: ${itemList}!`,
-                kid: `Right now ${displayShopName} has ${products.length} items in inventory: ${itemList}. Want to add another one?`,
-                tween: `You currently have ${products.length} products listed in ${displayShopName}: ${itemList}. Your average price is $${pennyAnalysis.avgSellingPrice.toFixed(2)}.`,
-                teen: `${displayShopName} currently has ${products.length} active items: ${itemList} (avg price $${pennyAnalysis.avgSellingPrice.toFixed(2)}, avg unit cost $${pennyAnalysis.avgUnitCost.toFixed(2)}).`
+                young: `Right now in ${displayShopName}, you have ${itemList}! Want me to add anything else?`,
+                kid: `You've got ${products.length} items in ${displayShopName}: ${itemList}. Want to add another item or figure out which one to push today?`,
+                tween: `Right now ${displayShopName} has ${products.length} items on the menu: ${itemList}. Ask me which one fits today's weather best!`,
+                teen: `${displayShopName} currently has ${products.length} items listed: ${itemList}. Let me know if you want to tweak prices or add another item.`
               });
             }
-          } else if (lower.includes('sales') || lower.includes('profit') || lower.includes('earned') || lower.includes('money') || lower.includes('goal') || lower.includes('progress')) {
+          } else if (lower.includes('sales') || lower.includes('profit') || lower.includes('earned') || lower.includes('money') || lower.includes('goal') || lower.includes('progress') || lower.includes('make')) {
             const leftToGoal = Math.max(0, totalTargetRevenue - totalRevenueEarned).toFixed(2);
+            const profitStatus =
+              netProfitEarned >= 0
+                ? `you've already paid off your $${breakEvenPoint.toFixed(2)} supply costs and made $${netProfitEarned.toFixed(2)} in pure profit`
+                : `you have $${Math.abs(netProfitEarned).toFixed(2)} left in sales before your $${breakEvenPoint.toFixed(2)} supply costs are paid off`;
             replyText = formatByAge(kidAgeGroup, {
-              young: `You've earned $${totalRevenueEarned.toFixed(2)} so far! Only $${leftToGoal} more to get your ${displayGoalItem}!`,
-              kid: `You've collected $${totalRevenueEarned.toFixed(2)} across ${salesLog.length} sales, with $${leftToGoal} left to reach your $${totalTargetRevenue.toFixed(2)} target for ${displayGoalItem}!`,
-              tween: `${displayShopName} has logged ${salesLog.length} sales for $${totalRevenueEarned.toFixed(2)} total revenue (net profit: $${netProfitEarned.toFixed(2)}). You need $${leftToGoal} more to hit your ${displayGoalItem} goal!`,
-              teen: `Across ${salesLog.length} transactions on Day ${activeDay}/${durationDays}, you've generated $${totalRevenueEarned.toFixed(2)} in revenue and $${netProfitEarned.toFixed(2)} in net profit ($${leftToGoal} remaining to reach $${totalTargetRevenue.toFixed(2)}).`
+              young: `You've collected $${totalRevenueEarned.toFixed(2)} so far! Only $${leftToGoal} more to buy your ${displayGoalItem}!`,
+              kid: `So far you've made $${totalRevenueEarned.toFixed(2)} in sales, and ${profitStatus}. You only need $${leftToGoal} more to reach your ${displayGoalItem} goal!`,
+              tween: `You've brought in $${totalRevenueEarned.toFixed(2)} across ${salesLog.length} orders, which means ${profitStatus}. You're $${leftToGoal} away from your $${totalTargetRevenue.toFixed(2)} target for ${displayGoalItem}!`,
+              teen: `You've generated $${totalRevenueEarned.toFixed(2)} across ${salesLog.length} orders, so ${profitStatus}. You need $${leftToGoal} more to hit your $${totalTargetRevenue.toFixed(2)} total target for ${displayGoalItem}.`
             });
           } else if (lower.includes('badge') || lower.includes('gem') || lower.includes('jar') || lower.includes('website') || lower.includes('how') || lower.includes('help')) {
             replyText = formatByAge(kidAgeGroup, {
               young: `You have ${tycoonGems} Tycoon Gems! Sell 2 yummy things at once in the Cash Register to win the Bundle Master badge!`,
-              kid: `You have ${tycoonGems} Tycoon Gems and ${earnedBadges.length} badge(s)! Use Goal & Menu to add items, Cash Register to ring up sales, and Close Shop to split profits into your 3 jars (${jarAllocations.goal}/${jarAllocations.supplies}/${jarAllocations.charity}).`,
+              kid: `You have ${tycoonGems} Tycoon Gems and ${earnedBadges.length} badge(s)! Use Goal & Menu to add items, Cash Register to ring up sales, and Close Shop to split profits into your 3 jars (${jarAllocations.goal}% Goal, ${jarAllocations.supplies}% Supplies, ${jarAllocations.charity}% Charity).`,
               tween: `In Seedling, you can manage products in Goal & Menu, forecast demand in AI Coach & ML, ring up bundles for +10 Tycoon Gems in Cash Register, and split profits into your 3 Jars (${jarAllocations.goal}% Goal / ${jarAllocations.supplies}% Supplies / ${jarAllocations.charity}% Charity).`,
-              teen: `Seedling tracks your full shop lifecycle: Menu & unit margins (Goal & Menu), Random Forest demand forecasting (AI Coach & ML), POS checkout with bundle detection (+10 Gems), and 3-Jar profit allocation (${jarAllocations.goal}/${jarAllocations.supplies}/${jarAllocations.charity}).`
+              teen: `Seedling connects your full shop workflow: Menu & margins (Goal & Menu), Random Forest demand forecasting (AI Coach & ML), POS checkout with bundle detection (+10 Gems), and 3-Jar profit splits (${jarAllocations.goal}/${jarAllocations.supplies}/${jarAllocations.charity}).`
             });
           } else if (lower.includes('price') || lower.includes('cost') || lower.includes('charge')) {
             replyText = formatByAge(kidAgeGroup, {
               young: `Charging around $${pennyAnalysis.recommendedPrice.toFixed(2)} is a super smart price for your shop!`,
               kid: `My smart pricing math suggests $${pennyAnalysis.recommendedPrice.toFixed(2)} (${pennyAnalysis.priceAction}) to help you earn more profit!`,
-              tween: `Based on demand elasticity and your supply costs ($${pennyAnalysis.avgUnitCost.toFixed(2)} avg), pricing near $${pennyAnalysis.recommendedPrice.toFixed(2)} (${pennyAnalysis.priceAction}) maximizes profit.`,
+              tween: `Based on customer demand and your supply costs ($${pennyAnalysis.avgUnitCost.toFixed(2)} avg), pricing near $${pennyAnalysis.recommendedPrice.toFixed(2)} (${pennyAnalysis.priceAction}) gives you the best profit.`,
               teen: `Elasticity modeling recommends $${pennyAnalysis.recommendedPrice.toFixed(2)} (${pennyAnalysis.priceAction}) against your $${pennyAnalysis.avgUnitCost.toFixed(2)} average unit cost.`
             });
           } else if (lower.includes('predict') || lower.includes('tomorrow') || lower.includes('forecast')) {
             replyText = formatByAge(kidAgeGroup, {
               young: `I think you can sell about ${pennyAnalysis.tomorrowPredictedUnits} things tomorrow! Yay!`,
               kid: `My ML forecaster predicts about ${pennyAnalysis.tomorrowPredictedUnits} sales tomorrow based on your shop data!`,
-              tween: `Combining your sales logs (${salesLog.length} orders) with our Random Forest model, I project ${pennyAnalysis.tomorrowPredictedUnits} units sold tomorrow.`,
+              tween: `Combining your sales logs with our Random Forest model, I project about ${pennyAnalysis.tomorrowPredictedUnits} units sold tomorrow.`,
               teen: `Our Random Forest model forecasts ${pennyAnalysis.tomorrowPredictedUnits} units tomorrow (MAE ${mlEngine.rfMAE} vs. ${mlEngine.baseMAE} persistence baseline).`
             });
           } else if (lower.includes('sign') || lower.includes('poster') || lower.includes('idea') || lower.includes('bundle')) {
@@ -2256,21 +2325,21 @@ FULL WEBSITE & SHOP SNAPSHOT:
               young: `Make a bright sign that says: "Welcome to ${displayShopName}! Help me buy ${displayGoalItem}!"`,
               kid: `Try a "Bestie Bundle" (2 items together) at the Cash Register to earn the Bundle Master badge, and put up a sign for your $${financialGoal} ${displayGoalItem} goal!`,
               tween: `Promote a 2-item combo deal to boost your average order value and unlock the Bundle Master badge, plus highlight your $${financialGoal} ${displayGoalItem} goal on your stand sign!`,
-              teen: `Bundling 2+ SKUs increases average transaction value and unlocks the Bundle Master bonus (+10 Gems), while mission-driven signage improves conversion.`
+              teen: `Bundling 2+ items increases average order value and unlocks the Bundle Master bonus (+10 Gems), while goal-driven signage improves conversion.`
             });
           } else if (/^(hi|hello|hey|yo|sup|how are you)/i.test(lower)) {
             replyText = formatByAge(kidAgeGroup, {
-              young: `Hiya ${displayKidName}! Welcome to ${displayShopName}! You have ${products.length} items and $${totalRevenueEarned.toFixed(2)} earned—what do you want to do?`,
-              kid: `Hey ${displayKidName}! Good to see you at ${displayShopName}. You're at $${totalRevenueEarned.toFixed(2)} of your $${totalTargetRevenue.toFixed(2)} goal—want to add an item, check your sales, or brainstorm?`,
-              tween: `Hey ${displayKidName}! ${displayShopName} is ${shopOpen ? 'open' : 'closed'} on Day ${activeDay} with $${totalRevenueEarned.toFixed(2)} earned so far. How can I help with your shop today?`,
-              teen: `Hey ${displayKidName}! ${displayShopName} is ${shopOpen ? 'open' : 'closed'} (Day ${activeDay}/${durationDays}, $${totalRevenueEarned.toFixed(2)} earned, ${products.length} items). What would you like to work on?`
+              young: `Hiya ${displayKidName}! Welcome to ${displayShopName}! What do you want to work on today?`,
+              kid: `Hey ${displayKidName}! Good to see you at ${displayShopName}. Want help picking what to sell today, adding a new item, or checking your goal progress?`,
+              tween: `Hey ${displayKidName}! Welcome back to ${displayShopName} on ${todayDateString}. How can I help with your shop today?`,
+              teen: `Hey ${displayKidName}! ${displayShopName} is ready for ${todayDateString}. Want to look at what to feature today, pricing, or your sales pace?`
             });
           } else {
             replyText = formatByAge(kidAgeGroup, {
-              young: `That sounds awesome, ${displayKidName}! You have $${totalRevenueEarned.toFixed(2)} saved for ${displayGoalItem}. Ask me about your items, sales, or tell me to add a new product!`,
-              kid: `Got it, ${displayKidName}! Right now ${displayShopName} has ${products.length} products and $${totalRevenueEarned.toFixed(2)} earned toward ${displayGoalItem}. Want to add a new item or review your sales?`,
-              tween: `I hear you, ${displayKidName}! With ${products.length} products in ${displayShopName} and $${totalRevenueEarned.toFixed(2)} logged so far, I can help you add products, check profit margins, or plan a bundle deal.`,
-              teen: `Makes sense, ${displayKidName}. Looking at ${displayShopName} (${products.length} SKUs, $${totalRevenueEarned.toFixed(2)} revenue, $${netProfitEarned.toFixed(2)} net profit), let me know if you want to model new products, pricing, or sales pace.`
+              young: `Got it, ${displayKidName}! You're saving up for ${displayGoalItem}—ask me what to sell today, how much money you've made, or tell me to add a new item!`,
+              kid: `I'm here to help with ${displayShopName}, ${displayKidName}! You can ask me what to sell today, how your money and goal are looking, or tell me to add a new product to your menu.`,
+              tween: `Happy to help with ${displayShopName}, ${displayKidName}! Ask me which item fits today's weather best, how close you are to your ${displayGoalItem} goal, or tell me to add a new product.`,
+              teen: `Got it, ${displayKidName}. Ask me what to prioritize in ${displayShopName} today, how your margins and goal progress look, or tell me to add a new product.`
             });
           }
         }
