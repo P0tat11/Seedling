@@ -1563,6 +1563,7 @@
 
       const handleOpenShop = () => {
         setShopOpen(true);
+        setShowTutorial(false);
         setActiveTab('pos');
       };
 
@@ -2281,6 +2282,8 @@ Live Shop Data:
       return (
         <div className={`min-h-screen ${theme.bg} ${theme.text} flex flex-col justify-between transition-colors`}>
           <div>
+            {activeTab !== 'pos' && (
+              <>
             {/* Top Navigation Utility Bar */}
             <header className="max-w-7xl mx-auto px-4 sm:px-6 pt-3 pb-2 flex flex-wrap items-center justify-between gap-2">
               <button
@@ -2464,6 +2467,8 @@ Live Shop Data:
                 </button>
               ))}
             </div>
+              </>
+            )}
 
             {/* Active Module Content */}
             <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
@@ -2582,9 +2587,6 @@ Live Shop Data:
                   changeDue={changeDue}
                   onCompleteSale={completeSale}
                   posBanner={posBanner}
-                  onGoSetup={() => setActiveTab('setup')}
-                  onGoDashboard={() => setActiveTab('dashboard')}
-                  onBackHome={() => setActiveTab('home')}
                   onCloseShop={handleCloseShop}
                 />
               )}
@@ -2679,11 +2681,16 @@ Live Shop Data:
             <TutorialModal
               theme={theme}
               onClose={() => setShowTutorial(false)}
-              onNavigate={(tab) => (tab === 'pos' ? handleOpenShop() : setActiveTab(tab))}
+              onNavigate={(tab) => {
+                setShowTutorial(false);
+                if (tab === 'pos') handleOpenShop();
+                else setActiveTab(tab);
+              }}
             />
           )}
 
           {/* Footer */}
+          {activeTab !== 'pos' && (
           <footer className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-5 mt-8 border-t border-black/10 text-center space-y-1">
             <p className={`text-xs font-extrabold ${theme.mutedText}`}>
               Seedling — Youth Entrepreneurship & AI Business Coach
@@ -2692,17 +2699,20 @@ Live Shop Data:
               This project is a prototype and is not financial advice.
             </p>
           </footer>
+          )}
 
           {/* Animated Corner Mascot Companion */}
-          <FloatingMascotCompanion
-            theme={theme}
-            mascot={activeMascot}
-            assistantDisplayName={assistantDisplayName}
-            kidName={displayKidName}
-            chatMessages={chatMessages}
-            isAiTyping={isAiTyping}
-            onSendChat={handleSendChat}
-          />
+          {activeTab !== 'pos' && (
+            <FloatingMascotCompanion
+              theme={theme}
+              mascot={activeMascot}
+              assistantDisplayName={assistantDisplayName}
+              kidName={displayKidName}
+              chatMessages={chatMessages}
+              isAiTyping={isAiTyping}
+              onSendChat={handleSendChat}
+            />
+          )}
         </div>
       );
     }
@@ -3586,9 +3596,6 @@ Live Shop Data:
       changeDue,
       onCompleteSale,
       posBanner,
-      onGoSetup,
-      onGoDashboard,
-      onBackHome,
       onCloseShop
     }) {
       const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -3642,13 +3649,6 @@ Live Shop Data:
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <button
-                onClick={onBackHome}
-                className={`inline-flex items-center gap-1.5 text-xs font-extrabold px-3 py-1 rounded-full border mb-2 cursor-pointer ${theme.pillBg}`}
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to Home Hub</span>
-              </button>
               <h1 className="text-2xl sm:text-3xl font-black">{businessName} — Cash Register</h1>
             </div>
 
@@ -3732,12 +3732,9 @@ Live Shop Data:
                   <div className={`p-8 rounded-2xl border-2 border-dashed text-center space-y-2 ${theme.innerCream}`}>
                     <div className="text-3xl">🛍️</div>
                     <div className="font-black text-sm">No Products in Register Yet</div>
-                    <button
-                      onClick={onGoSetup}
-                      className={`px-4 py-2 rounded-full border-2 font-black text-xs cursor-pointer ${theme.primaryBtn}`}
-                    >
-                      + Add Products in Menu Builder
-                    </button>
+                    <p className={`text-xs font-bold ${theme.mutedText}`}>
+                      Close the shop to return to the menu and add products.
+                    </p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -3972,12 +3969,6 @@ Live Shop Data:
                     <span>Checkout (+${cartSubtotal.toFixed(2)})</span>
                   </button>
 
-                  <button
-                    onClick={onGoDashboard}
-                    className={`w-full py-2.5 rounded-full border font-extrabold text-xs cursor-pointer ${theme.pillBg}`}
-                  >
-                    View Tycoon Progress Board →
-                  </button>
                 </div>
               </div>
             </div>
