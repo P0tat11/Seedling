@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS inventory (
 CREATE TABLE IF NOT EXISTS transactions (
   account_id UUID NOT NULL,
   shop_id TEXT NOT NULL,
+  shop_key TEXT NOT NULL,
   id TEXT NOT NULL,
   day INTEGER NOT NULL,
   receipt_time TEXT NOT NULL,
@@ -87,8 +88,23 @@ CREATE TABLE IF NOT EXISTS transactions (
   profit NUMERIC(12, 2) NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (account_id, id),
-  FOREIGN KEY (account_id, shop_id) REFERENCES shops(account_id, id) ON DELETE CASCADE
+  CONSTRAINT transactions_shop_key_fkey
+    FOREIGN KEY (account_id, shop_key) REFERENCES shops(account_id, id) ON DELETE CASCADE
 );
+
+ALTER TABLE transactions DROP CONSTRAINT IF EXISTS transactions_account_id_shop_id_fkey;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS shop_key TEXT;
+UPDATE transactions AS t
+SET shop_key = t.shop_id,
+    shop_id = s.business_name
+FROM shops AS s
+WHERE t.shop_key IS NULL
+  AND s.account_id = t.account_id
+  AND s.id = t.shop_id;
+ALTER TABLE transactions ALTER COLUMN shop_key SET NOT NULL;
+ALTER TABLE transactions DROP CONSTRAINT IF EXISTS transactions_shop_key_fkey;
+ALTER TABLE transactions ADD CONSTRAINT transactions_shop_key_fkey
+  FOREIGN KEY (account_id, shop_key) REFERENCES shops(account_id, id) ON DELETE CASCADE;
 
 CREATE TABLE IF NOT EXISTS transaction_items (
   account_id UUID NOT NULL,
