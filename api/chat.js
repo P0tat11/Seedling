@@ -30,7 +30,9 @@ module.exports = async function handler(req, res) {
 
     if (response.ok) {
       const data = await response.json();
-      return res.status(200).json(data);
+      if (data?.choices?.[0]?.message?.content) {
+        return res.status(200).json(data);
+      }
     }
   } catch (err) {}
 
@@ -50,12 +52,34 @@ module.exports = async function handler(req, res) {
       });
       if (groqRes.ok) {
         const groqData = await groqRes.json();
-        return res.status(200).json(groqData);
+        if (groqData?.choices?.[0]?.message?.content) {
+          return res.status(200).json(groqData);
+        }
       }
     } catch (err) {}
   }
 
-  // 3. Free zero-key Pollinations Text POST endpoint (current API)
+  // 3. Free zero-key Pollinations OpenAI-compatible & Text endpoints
+  try {
+    const polyRes = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'openai-fast',
+        messages
+      })
+    });
+    if (polyRes.ok) {
+      const polyData = await polyRes.json();
+      const content = polyData?.choices?.[0]?.message?.content;
+      if (content && content.trim()) {
+        return res.status(200).json({
+          choices: [{ message: { role: 'assistant', content: content.trim() } }]
+        });
+      }
+    }
+  } catch (err) {}
+
   try {
     const freeRes = await fetch('https://text.pollinations.ai/', {
       method: 'POST',
@@ -69,7 +93,7 @@ module.exports = async function handler(req, res) {
 
     if (freeRes.ok) {
       const textReply = await freeRes.text();
-      if (textReply && textReply.trim()) {
+      if (textReply && textReply.trim() && !textReply.includes('IMPORTANT NOTICE')) {
         return res.status(200).json({
           choices: [{ message: { role: 'assistant', content: textReply.trim() } }]
         });
@@ -77,7 +101,7 @@ module.exports = async function handler(req, res) {
     }
   } catch (err) {}
 
-  // 4. Return 200 with empty choice so frontend seamlessly uses its built-in smart coach without a 502 console error
+  // 4. Return 200 with empty choice so frontend seamlessly uses its conversational smart coach
   return res.status(200).json({
     choices: [{ message: { role: 'assistant', content: '' } }]
   });
