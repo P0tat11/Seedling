@@ -72,7 +72,7 @@ module.exports = async function handler(req, res) {
     if (polyRes.ok) {
       const polyData = await polyRes.json();
       const content = polyData?.choices?.[0]?.message?.content;
-      if (content && content.trim()) {
+      if (content && content.trim().length >= 8) {
         return res.status(200).json({
           choices: [{ message: { role: 'assistant', content: content.trim() } }]
         });
@@ -93,7 +93,7 @@ module.exports = async function handler(req, res) {
 
     if (freeRes.ok) {
       const textReply = await freeRes.text();
-      if (textReply && textReply.trim() && !textReply.includes('IMPORTANT NOTICE')) {
+      if (textReply && textReply.trim().length >= 8 && !textReply.includes('IMPORTANT NOTICE')) {
         return res.status(200).json({
           choices: [{ message: { role: 'assistant', content: textReply.trim() } }]
         });
@@ -109,7 +109,7 @@ module.exports = async function handler(req, res) {
     const getRes = await fetch(`https://text.pollinations.ai/${prompt}?model=openai`);
     if (getRes.ok) {
       const getText = await getRes.text();
-      if (getText && getText.trim() && !getText.includes('IMPORTANT NOTICE')) {
+      if (getText && getText.trim().length >= 8 && !getText.includes('IMPORTANT NOTICE')) {
         return res.status(200).json({
           choices: [{ message: { role: 'assistant', content: getText.trim() } }]
         });
