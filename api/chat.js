@@ -19,14 +19,18 @@ module.exports = async function handler(req, res) {
 
   // 1. Try Ollama Cloud first
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3500);
     const response = await fetch('https://ollama.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${ollamaApiKey}`,
         'Content-Type': 'application/json'
       },
+      signal: controller.signal,
       body: JSON.stringify(req.body)
     });
+    clearTimeout(timer);
 
     if (response.ok) {
       const data = await response.json();
