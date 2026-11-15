@@ -330,83 +330,286 @@
       const lower = (itemName || 'Item').toLowerCase();
       let bgTop = '#E0F2FE';
       let bgBot = '#FEF3C7';
-      let mainColor = '#34D399';
-      let accentColor = '#FBBF24';
       let detailSvg = '';
 
-      if (lower.includes('cocoa') || lower.includes('hot chocolate') || lower.includes('coffee') || lower.includes('tea')) {
+      // 1. Boba / Bubble Tea / Matcha / Iced Latte
+      if (/boba|bubble tea|milk tea|taro|matcha|thai tea|iced tea|latte/.test(lower)) {
+        const isMatcha = /matcha/.test(lower);
+        const isTaro = /taro/.test(lower);
+        const drinkFill = isMatcha ? '#4ADE80' : isTaro ? '#C084FC' : '#D97706';
+        const drinkLight = isMatcha ? '#BBF7D0' : isTaro ? '#F3E8FF' : '#FDE68A';
+        bgTop = '#F0FDF4';
+        bgBot = '#FEF3C7';
+        detailSvg = `
+          <defs>
+            <linearGradient id="bobaGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="${drinkLight}"/>
+              <stop offset="100%" stop-color="${drinkFill}"/>
+            </linearGradient>
+          </defs>
+          <rect x="66" y="14" width="9" height="44" rx="4" transform="rotate(14 66 14)" fill="#1E293B"/>
+          <path d="M38 38 L82 38 L75 95 C74 99, 46 99, 45 95 Z" fill="url(#bobaGrad)" />
+          <path d="M40 50 L80 50 L75 95 C74 99, 46 99, 45 95 Z" fill="${drinkFill}" opacity="0.55"/>
+          <ellipse cx="60" cy="38" rx="23" ry="5.5" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+          <ellipse cx="60" cy="36" rx="20" ry="4" fill="#F8FAFC"/>
+          <circle cx="50" cy="86" r="4.2" fill="#1E1B4B"/>
+          <circle cx="60" cy="88" r="4.2" fill="#1E1B4B"/>
+          <circle cx="70" cy="85" r="4.2" fill="#1E1B4B"/>
+          <circle cx="55" cy="79" r="3.8" fill="#1E1B4B"/>
+          <circle cx="66" cy="78" r="3.8" fill="#1E1B4B"/>
+          <rect x="44" y="44" width="5" height="36" rx="2.5" fill="#FFFFFF" opacity="0.55"/>
+        `;
+      }
+      // 2. Hot Cocoa / Chai / Coffee / Warm Tea / Champurrado / Horchata
+      else if (/cocoa|hot chocolate|coffee|tea|chai|champurrado|cider|horchata|atole/.test(lower)) {
+        const isHorchata = /horchata/.test(lower);
         bgTop = '#FFEDD5';
         bgBot = '#FDE68A';
         detailSvg = `
-          <path d="M46 28 Q43 22 46 16" stroke="#FFFFFF" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-          <path d="M60 26 Q57 20 60 14" stroke="#FFFFFF" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-          <path d="M74 28 Q71 22 74 16" stroke="#FFFFFF" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-          <path d="M84 48 H94 C100 48, 100 68, 94 68 H84" stroke="#0F172A" stroke-width="4" fill="none"/>
-          <rect x="34" y="38" width="52" height="52" rx="14" fill="#F43F5E" stroke="#0F172A" stroke-width="4"/>
-          <ellipse cx="60" cy="42" rx="22" ry="6" fill="#78350F"/>
-          <circle cx="52" cy="41" r="4" fill="#FFFFFF"/>
-          <circle cx="66" cy="42" r="4" fill="#FFFFFF"/>
-          <circle cx="51" cy="64" r="3" fill="#0F172A"/>
-          <circle cx="69" cy="64" r="3" fill="#0F172A"/>
-          <path d="M56 70 Q60 75 64 70" stroke="#0F172A" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <defs>
+            <linearGradient id="mugGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#FB7185"/>
+              <stop offset="100%" stop-color="#BE123C"/>
+            </linearGradient>
+          </defs>
+          ${!isHorchata ? `
+            <path d="M47 26 Q44 19 48 13" stroke="#FFFFFF" stroke-width="3.5" fill="none" stroke-linecap="round" opacity="0.85"/>
+            <path d="M60 24 Q57 17 61 11" stroke="#FFFFFF" stroke-width="3.5" fill="none" stroke-linecap="round" opacity="0.85"/>
+            <path d="M73 26 Q70 19 74 13" stroke="#FFFFFF" stroke-width="3.5" fill="none" stroke-linecap="round" opacity="0.85"/>
+          ` : ''}
+          <path d="M84 48 H94 C101 48, 101 70, 94 70 H84" stroke="#BE123C" stroke-width="6" fill="none" stroke-linecap="round"/>
+          <rect x="33" y="38" width="53" height="53" rx="15" fill="url(#mugGrad)"/>
+          <ellipse cx="59.5" cy="42" rx="23" ry="6.5" fill="${isHorchata ? '#FEF3C7' : '#5C2D16'}"/>
+          <rect x="40" y="48" width="5" height="34" rx="2.5" fill="#FFFFFF" opacity="0.35"/>
+          ${isHorchata
+            ? `<line x1="50" y1="42" x2="70" y2="41" stroke="#92400E" stroke-width="3" stroke-linecap="round"/>`
+            : `<rect x="48" y="38" width="9" height="7" rx="3" fill="#FFFFFF"/>
+               <rect x="61" y="39" width="9" height="7" rx="3" fill="#FFFBEB"/>`
+          }
         `;
-      } else if (lower.includes('slime')) {
-        bgTop = '#FAE8FF';
-        bgBot = '#CCFBF1';
-        mainColor = '#2DD4BF';
-        accentColor = '#F472B6';
-        detailSvg = `
-          <ellipse cx="60" cy="84" rx="38" ry="12" fill="#0D9488" opacity="0.35"/>
-          <path d="M26 74 C26 42, 94 42, 94 74 C94 84, 84 86, 78 78 C72 88, 62 88, 58 78 C52 88, 40 86, 36 78 C30 85, 26 82, 26 74 Z" fill="${mainColor}" stroke="#0F172A" stroke-width="4"/>
-          <circle cx="46" cy="54" r="5" fill="#FFFFFF" opacity="0.85"/>
-          <circle cx="72" cy="58" r="3.5" fill="${accentColor}"/>
-          <circle cx="50" cy="66" r="3" fill="#0F172A"/>
-          <circle cx="70" cy="66" r="3" fill="#0F172A"/>
-          <path d="M55 71 Q60 76 65 71" stroke="#0F172A" stroke-width="3" fill="none" stroke-linecap="round"/>
-        `;
-      } else if (lower.includes('lemon') || lower.includes('juice') || lower.includes('drink')) {
+      }
+      // 3. Lemonade / Agua Fresca / Mangonada / Juice / Smoothie
+      else if (/lemon|agua fresca|mangonada|juice|smoothie|drink|punch|soda/.test(lower)) {
+        const isMango = /mango/.test(lower);
+        const isBerry = /berry|strawberry|watermelon|jamaica|hibiscus/.test(lower);
+        const topCol = isMango ? '#FDE047' : isBerry ? '#FB7185' : '#FEF08A';
+        const botCol = isMango ? '#F97316' : isBerry ? '#E11D48' : '#EAB308';
         bgTop = '#FEF9C3';
         bgBot = '#DCFCE7';
         detailSvg = `
-          <line x1="72" y1="18" x2="62" y2="45" stroke="#F43F5E" stroke-width="5" stroke-linecap="round"/>
-          <polygon points="38,38 82,38 76,94 44,94" fill="#FDE047" stroke="#0F172A" stroke-width="4" stroke-linejoin="round"/>
-          <polygon points="40,52 80,52 76,94 44,94" fill="#FACC15"/>
-          <circle cx="82" cy="38" r="13" fill="#FEF08A" stroke="#0F172A" stroke-width="3.5"/>
-          <circle cx="53" cy="70" r="2.8" fill="#0F172A"/>
-          <circle cx="67" cy="70" r="2.8" fill="#0F172A"/>
-          <path d="M56 76 Q60 80 64 76" stroke="#0F172A" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+          <defs>
+            <linearGradient id="juiceGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="${topCol}"/>
+              <stop offset="100%" stop-color="${botCol}"/>
+            </linearGradient>
+          </defs>
+          <line x1="74" y1="16" x2="62" y2="48" stroke="#F43F5E" stroke-width="5.5" stroke-linecap="round"/>
+          <circle cx="82" cy="36" r="14" fill="#FACC15"/>
+          <circle cx="82" cy="36" r="11" fill="#FEF9C3"/>
+          <path d="M36 36 L84 36 L77 95 C76 98, 44 98, 43 95 Z" fill="#FFFFFF" opacity="0.65"/>
+          <path d="M39 48 L81 48 L76 94 C75 97, 45 97, 44 94 Z" fill="url(#juiceGrad)"/>
+          <rect x="46" y="54" width="11" height="11" rx="3" transform="rotate(12 46 54)" fill="#FFFFFF" opacity="0.65"/>
+          <rect x="61" y="62" width="11" height="11" rx="3" transform="rotate(-15 61 62)" fill="#FFFFFF" opacity="0.65"/>
+          <rect x="43" y="42" width="4.5" height="44" rx="2.2" fill="#FFFFFF" opacity="0.6"/>
         `;
-      } else if (lower.includes('cookie') || lower.includes('brownie') || lower.includes('cake') || lower.includes('cupcake')) {
-        bgTop = '#FFEDD5';
+      }
+      // 4. Empanadas / Samosas / Dumplings / Gyoza / Bao / Arepas / Tamales / Tacos
+      else if (/empanada|samosa|dumpling|gyoza|bao|arepa|tamale|taco|pupusa|patty/.test(lower)) {
+        const isSamosa = /samosa/.test(lower);
+        const isBao = /bao|dumpling|gyoza/.test(lower);
+        bgTop = '#FEF3C7';
+        bgBot = '#FFEDD5';
+        detailSvg = isSamosa
+          ? `
+            <defs>
+              <linearGradient id="pastryGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#FBBF24"/>
+                <stop offset="60%" stop-color="#D97706"/>
+                <stop offset="100%" stop-color="#92400E"/>
+              </linearGradient>
+            </defs>
+            <ellipse cx="60" cy="88" rx="34" ry="7" fill="#78350F" opacity="0.2"/>
+            <path d="M60 24 C66 24, 92 74, 88 81 C84 88, 36 88, 32 81 C28 74, 54 24, 60 24 Z" fill="url(#pastryGrad)"/>
+            <ellipse cx="52" cy="52" rx="6" ry="12" transform="rotate(20 52 52)" fill="#FEF3C7" opacity="0.45"/>
+            <circle cx="66" cy="66" r="2.2" fill="#92400E" opacity="0.5"/>
+            <circle cx="48" cy="72" r="2.5" fill="#92400E" opacity="0.5"/>
+          `
+          : isBao
+          ? `
+            <defs>
+              <radialGradient id="baoGrad" cx="38%" cy="30%" r="70%">
+                <stop offset="0%" stop-color="#FFFFFF"/>
+                <stop offset="75%" stop-color="#F8FAFC"/>
+                <stop offset="100%" stop-color="#E2E8F0"/>
+              </radialGradient>
+            </defs>
+            <ellipse cx="60" cy="86" rx="34" ry="7" fill="#0F172A" opacity="0.15"/>
+            <path d="M24 68 C24 40, 42 30, 60 30 C78 30, 96 40, 96 68 C96 80, 82 84, 60 84 C38 84, 24 80, 24 68 Z" fill="url(#baoGrad)"/>
+            <path d="M60 30 Q54 42 50 48 M60 30 Q60 43 60 49 M60 30 Q66 42 70 48" stroke="#CBD5E1" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          `
+          : `
+            <defs>
+              <linearGradient id="empGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#FCD34D"/>
+                <stop offset="55%" stop-color="#D97706"/>
+                <stop offset="100%" stop-color="#92400E"/>
+              </linearGradient>
+            </defs>
+            <ellipse cx="60" cy="86" rx="35" ry="7" fill="#78350F" opacity="0.2"/>
+            <path d="M22 72 C22 40, 98 40, 98 72 C98 81, 22 81, 22 72 Z" fill="url(#empGrad)"/>
+            <path d="M24 71 Q32 76 40 71 Q48 76 56 71 Q64 76 72 71 Q80 76 88 71 Q93 74 96 71" stroke="#B45309" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+            <ellipse cx="52" cy="53" rx="14" ry="5" fill="#FEF3C7" opacity="0.45"/>
+          `;
+      }
+      // 5. Churros / Pretzels / Croissants / Pan Dulce / Concha
+      else if (/churro|pretzel|croissant|concha|pan dulce|bread|bagel|donut|doughnut/.test(lower)) {
+        const isPretzel = /pretzel/.test(lower);
+        const isDonut = /donut|doughnut/.test(lower);
+        bgTop = '#FFF7ED';
         bgBot = '#FEF3C7';
+        detailSvg = isDonut
+          ? `
+            <circle cx="60" cy="60" r="34" fill="#D97706"/>
+            <path d="M27 56 C27 36, 93 36, 93 56 C93 66, 84 62, 78 66 C72 70, 66 62, 60 66 C54 70, 48 62, 42 66 C36 70, 27 66, 27 56 Z" fill="#F472B6"/>
+            <circle cx="60" cy="60" r="12" fill="#FFF7ED"/>
+            <rect x="42" y="42" width="6" height="2.5" rx="1" transform="rotate(25 42 42)" fill="#FDE047"/>
+            <rect x="70" y="44" width="6" height="2.5" rx="1" transform="rotate(-30 70 44)" fill="#38BDF8"/>
+            <rect x="56" y="36" width="6" height="2.5" rx="1" fill="#FFFFFF"/>
+          `
+          : isPretzel
+          ? `
+            <path d="M36 74 C22 60, 28 34, 48 40 C58 43, 62 56, 60 64 C58 56, 62 43, 72 40 C92 34, 98 60, 84 74 C72 85, 48 64, 36 74 Z" stroke="#92400E" stroke-width="11" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M36 74 C22 60, 28 34, 48 40 C58 43, 62 56, 60 64 C58 56, 62 43, 72 40 C92 34, 98 60, 84 74 C72 85, 48 64, 36 74 Z" stroke="#D97706" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="42" cy="42" r="2" fill="#FFFFFF"/>
+            <circle cx="78" cy="44" r="2" fill="#FFFFFF"/>
+            <circle cx="34" cy="64" r="2" fill="#FFFFFF"/>
+            <circle cx="84" cy="64" r="2" fill="#FFFFFF"/>
+          `
+          : `
+            <defs>
+              <linearGradient id="churroGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#F59E0B"/>
+                <stop offset="100%" stop-color="#92400E"/>
+              </linearGradient>
+            </defs>
+            <rect x="34" y="24" width="13" height="68" rx="6.5" transform="rotate(18 34 24)" fill="url(#churroGrad)"/>
+            <rect x="56" y="22" width="13" height="68" rx="6.5" transform="rotate(18 56 22)" fill="url(#churroGrad)"/>
+            <rect x="76" y="28" width="13" height="64" rx="6.5" transform="rotate(18 76 28)" fill="url(#churroGrad)"/>
+            <circle cx="45" cy="45" r="1.5" fill="#FEF3C7"/>
+            <circle cx="65" cy="52" r="1.5" fill="#FEF3C7"/>
+            <circle cx="82" cy="58" r="1.5" fill="#FEF3C7"/>
+          `;
+      }
+      // 6. Mochi / Macarons / Onigiri / Sushi / Baklava / Cookies / Brownies / Cupcakes
+      else if (/mochi|macaron|onigiri|sushi|baklava|cookie|brownie|cake|cupcake|pie|tart|sweet/.test(lower)) {
+        const isOnigiri = /onigiri|sushi/.test(lower);
+        const isMacaron = /macaron|mochi/.test(lower);
+        bgTop = '#FDF2F8';
+        bgBot = '#FEF3C7';
+        detailSvg = isOnigiri
+          ? `
+            <path d="M60 24 C70 24, 94 68, 90 80 C86 88, 34 88, 30 80 C26 68, 50 24, 60 24 Z" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2.5"/>
+            <rect x="46" y="62" width="28" height="24" rx="4" fill="#064E3B"/>
+            <circle cx="52" cy="50" r="1.5" fill="#0F172A"/>
+            <circle cx="68" cy="50" r="1.5" fill="#0F172A"/>
+          `
+          : isMacaron
+          ? `
+            <ellipse cx="60" cy="84" rx="32" ry="6" fill="#9D174D" opacity="0.2"/>
+            <path d="M28 54 C28 36, 92 36, 92 54 Z" fill="#F472B6"/>
+            <rect x="27" y="54" width="66" height="10" rx="5" fill="#FFF1F2"/>
+            <path d="M28 64 C28 80, 92 80, 92 64 Z" fill="#EC4899"/>
+            <ellipse cx="48" cy="43" rx="10" ry="3.5" fill="#FFFFFF" opacity="0.45"/>
+          `
+          : `
+            <defs>
+              <radialGradient id="cookieGrad" cx="35%" cy="30%" r="70%">
+                <stop offset="0%" stop-color="#F59E0B"/>
+                <stop offset="65%" stop-color="#B45309"/>
+                <stop offset="100%" stop-color="#78350F"/>
+              </radialGradient>
+            </defs>
+            <ellipse cx="60" cy="92" rx="30" ry="6" fill="#451A03" opacity="0.22"/>
+            <circle cx="60" cy="60" r="34" fill="url(#cookieGrad)"/>
+            <ellipse cx="46" cy="46" rx="6" ry="4.5" fill="#3E1704"/>
+            <ellipse cx="72" cy="49" rx="5.5" ry="4.5" fill="#3E1704"/>
+            <ellipse cx="58" cy="62" rx="6" ry="5" fill="#3E1704"/>
+            <ellipse cx="44" cy="73" rx="5" ry="4" fill="#3E1704"/>
+            <ellipse cx="73" cy="72" rx="5.5" ry="4.5" fill="#3E1704"/>
+            <ellipse cx="46" cy="36" rx="11" ry="4" transform="rotate(-22 46 36)" fill="#FDE68A" opacity="0.4"/>
+          `;
+      }
+      // 7. Ice Cream / Gelato / Paleta / Snow Cone / Popsicle / Kulfi
+      else if (/ice cream|gelato|paleta|snow cone|popsicle|kulfi|sorbet/.test(lower)) {
+        bgTop = '#E0F2FE';
+        bgBot = '#FCE7F3';
         detailSvg = `
-          <circle cx="60" cy="62" r="32" fill="#D97706" stroke="#0F172A" stroke-width="4"/>
-          <circle cx="48" cy="50" r="4" fill="#451A03"/>
-          <circle cx="71" cy="52" r="4.5" fill="#451A03"/>
-          <circle cx="58" cy="75" r="4" fill="#451A03"/>
-          <circle cx="49" cy="63" r="3" fill="#0F172A"/>
-          <circle cx="71" cy="63" r="3" fill="#0F172A"/>
-          <path d="M55 68 Q60 73 65 68" stroke="#0F172A" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <polygon points="44,58 76,58 60,98" fill="#D97706"/>
+          <line x1="49" y1="66" x2="67" y2="82" stroke="#92400E" stroke-width="2"/>
+          <line x1="71" y1="66" x2="53" y2="82" stroke="#92400E" stroke-width="2"/>
+          <circle cx="60" cy="48" r="21" fill="#F472B6"/>
+          <circle cx="52" cy="41" r="6" fill="#FBCFE8" opacity="0.6"/>
+          <circle cx="60" cy="25" r="5" fill="#E11D48"/>
         `;
-      } else {
-        const palette = ['#38BDF8', '#F472B6', '#34D399', '#FBBF24', '#A78BFA'];
+      }
+      // 8. Friendship Bracelets / Beads / Keychains / Slime / Crafts
+      else if (/bracelet|bead|necklace|keychain|ring|slime|craft|sticker|pin/.test(lower)) {
+        const isSlime = /slime/.test(lower);
+        bgTop = '#FAE8FF';
+        bgBot = '#E0F2FE';
+        if (isSlime) {
+          detailSvg = `
+            <ellipse cx="60" cy="86" rx="38" ry="9" fill="#0D9488" opacity="0.25"/>
+            <path d="M24 74 C24 38, 96 38, 96 74 C96 84, 84 86, 78 78 C72 88, 62 88, 58 78 C52 88, 40 86, 36 78 C30 85, 24 82, 24 74 Z" fill="#2DD4BF"/>
+            <ellipse cx="45" cy="52" rx="8" ry="4" transform="rotate(-18 45 52)" fill="#FFFFFF" opacity="0.75"/>
+            <circle cx="72" cy="56" r="3" fill="#F472B6"/>
+            <circle cx="62" cy="64" r="2.5" fill="#FBBF24"/>
+          `;
+        } else {
+          const colors = ['#F43F5E', '#38BDF8', '#FBBF24', '#10B981', '#A855F7', '#FB923C'];
+          const beads = Array.from({ length: 12 }, (_, i) => {
+            const ang = (i / 12) * Math.PI * 2;
+            const cx = 60 + Math.cos(ang) * 29;
+            const cy = 60 + Math.sin(ang) * 27;
+            return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="7.5" fill="${colors[i % colors.length]}"/>
+                    <circle cx="${(cx - 2).toFixed(1)}" cy="${(cy - 2).toFixed(1)}" r="2.2" fill="#FFFFFF" opacity="0.65"/>`;
+          }).join('');
+          detailSvg = `<circle cx="60" cy="60" r="28" fill="none" stroke="#CBD5E1" stroke-width="2.5"/>${beads}`;
+        }
+      }
+      // 9. Realistic Glossy Product Emblem Fallback for any custom item
+      else {
+        const palettes = [
+          ['#38BDF8', '#0284C7'],
+          ['#34D399', '#059669'],
+          ['#FB7185', '#E11D48'],
+          ['#FBBF24', '#D97706'],
+          ['#A78BFA', '#7C3AED']
+        ];
         const hash = itemName.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-        mainColor = palette[hash % palette.length];
+        const [c1, c2] = palettes[hash % palettes.length];
         const letter = (itemName.trim()[0] || '★').toUpperCase();
         detailSvg = `
-          <polygon points="60,22 71,44 95,48 78,65 82,89 60,78 38,89 42,65 25,48 49,44" fill="${mainColor}" stroke="#0F172A" stroke-width="4" stroke-linejoin="round"/>
-          <text x="60" y="67" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="24" fill="#0F172A">${letter}</text>
+          <defs>
+            <linearGradient id="badgeGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="${c1}"/>
+              <stop offset="100%" stop-color="${c2}"/>
+            </linearGradient>
+          </defs>
+          <circle cx="60" cy="60" r="35" fill="url(#badgeGrad)"/>
+          <ellipse cx="48" cy="42" rx="14" ry="7" transform="rotate(-25 48 42)" fill="#FFFFFF" opacity="0.35"/>
+          <text x="60" y="71" text-anchor="middle" font-family="Inter, sans-serif" font-weight="900" font-size="34" fill="#FFFFFF">${letter}</text>
         `;
       }
 
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
         <defs>
-          <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id="bgCard" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stop-color="${bgTop}"/>
             <stop offset="100%" stop-color="${bgBot}"/>
           </linearGradient>
         </defs>
-        <rect width="120" height="120" rx="24" fill="url(#g)"/>
+        <rect width="120" height="120" rx="24" fill="url(#bgCard)"/>
         ${detailSvg}
       </svg>`;
 
@@ -2074,6 +2277,7 @@ ${ageToneInstruction}
 CRITICAL CONVERSATION RULES:
 - Talk like a real, helpful person—NEVER recite raw stats in parentheses like "(2 SKUs, $0.00 revenue, $-50.00 net profit)" unless asked!
 - Always directly answer the user's actual question using common sense + their real shop data below.
+- Respectfully celebrate and suggest diverse, delicious foods, drinks, and crafts from cultures around the world (like horchata, boba tea, samosas, empanadas, mochi, churros, baklava, macarons, pretzels, or friendship bracelets) when recommending menu ideas—always inclusive, accurate, and 100% respectful!
 - If the user asks what they should sell today from their inventory, compare the actual items they have in stock against today's date (${todayDateString}) and live weather (${liveWeatherReport.todayTemp}°F in ${liveWeatherReport.locationLabel}), and recommend the best item(s) with a natural explanation!
 - Only bring up weather when relevant to their question (like deciding what to sell today, outdoor setup, or seasonal items).
 - Keep replies warm, natural, and concise (2-4 sentences). Stay 100% G-rated.
@@ -2162,15 +2366,17 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
             const candidatePool = isColdOut
               ? [
                   { name: 'Warm Chocolate Chip Cookies', price: 2.5, why: 'pairs great with Hot Cocoa on a chilly day' },
-                  { name: 'Cinnamon Apple Cider', price: 3.0, why: 'super cozy fall/winter bestseller' },
-                  { name: 'Friendship Bracelets', price: 3.5, why: 'easy to make ahead and sells in any weather' },
-                  { name: 'Mini Brownie Bites', price: 2.0, why: 'high profit margin and kids love them' }
+                  { name: 'Cinnamon Churros', price: 3.0, why: 'crispy, warm treat that smells amazing' },
+                  { name: 'Warm Chai or Apple Cider', price: 3.0, why: 'cozy spiced drink loved in cool weather' },
+                  { name: 'Baked Empanadas or Samosas', price: 3.5, why: 'savory handheld favorite when it is chilly' },
+                  { name: 'Friendship Bracelets', price: 3.5, why: 'easy to make ahead and sells in any weather' }
                 ]
               : [
-                  { name: 'Rainbow Snow Cones', price: 3.0, why: 'huge hit in warm weather with super low supply cost' },
-                  { name: 'Chocolate Chip Cookies', price: 2.0, why: 'easy combo upsell next to cold drinks' },
-                  { name: 'Friendship Bracelets', price: 3.5, why: 'high-margin craft that never melts' },
-                  { name: 'DIY Slime Cups', price: 4.0, why: 'kids always stop to check out colorful slime' }
+                  { name: 'Boba Milk Tea', price: 4.0, why: 'super popular refreshing drink with great margins' },
+                  { name: 'Cinnamon Horchata or Agua Fresca', price: 3.0, why: 'refreshing crowd-pleaser on warm days' },
+                  { name: 'Sweet Mochi or Macarons', price: 3.0, why: 'colorful bite-sized treats people love' },
+                  { name: 'Rainbow Snow Cones', price: 3.0, why: 'huge hit in warm weather with low supply cost' },
+                  { name: 'Friendship Bracelets', price: 3.5, why: 'high-margin craft that never melts' }
                 ];
 
             const freshIdeas = candidatePool
