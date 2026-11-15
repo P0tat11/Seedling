@@ -2325,9 +2325,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                 teen: `For ${todayDateString} (${tempF}°F), lead with ${best.name} at $${best.price.toFixed(2)}—it delivers your highest unit profit ($${margin}/sale) toward your ${displayGoalItem} target.`
               });
             }
-          } else if (lower.includes('date') || lower.includes('day is it') || lower.includes('today')) {
-            replyText = `Today is ${todayDateString}, and you're currently on Selling Day ${activeDay} of ${durationDays} at ${displayShopName}!`;
-          } else if (lower.includes('weather') || lower.includes('outside') || lower.includes('rain') || lower.includes('cold') || lower.includes('hot')) {
+          } else if (lower.includes('weather') || lower.includes('outside') || lower.includes('rain') || lower.includes('cold') || lower.includes('hot') || lower.includes('temperature')) {
             const altText =
               pennyAnalysis.seasonFit.suggestedItems.length > 0
                 ? ` For ${tempF}°F weather, great items to feature are ${pennyAnalysis.seasonFit.suggestedItems.map((i) => i.name).join(', ')}.`
@@ -2338,6 +2336,8 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
               tween: `Live check for ${liveWeatherReport.locationLabel}: ${liveWeatherReport.todayVerdict}.${altText}`,
               teen: `Live telemetry for ${liveWeatherReport.locationLabel}: ${liveWeatherReport.todayVerdict}.${altText}`
             });
+          } else if (lower.includes('date') || lower.includes('day is it') || lower.includes('what day')) {
+            replyText = `Today is ${todayDateString}, and you're currently on Selling Day ${activeDay} of ${durationDays} at ${displayShopName}!`;
           } else if (lower.includes('inventory') || lower.includes('menu') || lower.includes('products') || lower.includes('items') || lower.includes('have')) {
             if (products.length === 0) {
               replyText = formatByAge(kidAgeGroup, {
