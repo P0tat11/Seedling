@@ -3622,11 +3622,11 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
             </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
             <div
-              className={`lg:col-span-7 ${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-5 sm:p-6 flex flex-col justify-between space-y-4`}
+              className={`lg:col-span-7 ${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-5 sm:p-6 flex flex-col space-y-4 min-h-[600px]`}
             >
-              <div className="flex items-center justify-between border-b border-black/10 pb-3">
+              <div className="flex items-center justify-between border-b border-black/10 pb-3 shrink-0">
                 <div className="flex items-center gap-3">
                   <PixelMascot type={activeMascot.id} size={48} circular isTalking={isAiTyping} />
                   <div>
@@ -3641,7 +3641,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                 </div>
               </div>
 
-              <div className={`p-4 rounded-2xl border ${theme.innerCream} h-80 overflow-y-auto space-y-3`}>
+              <div className={`p-4 rounded-2xl border ${theme.innerCream} flex-1 min-h-[360px] max-h-[540px] overflow-y-auto space-y-3`}>
                 <div className="flex items-start gap-2.5">
                   <PixelMascot type={activeMascot.id} size={34} circular />
                   <div className={`p-3.5 rounded-2xl rounded-tl-sm border text-xs sm:text-sm leading-relaxed max-w-[85%] ${theme.card}`}>
@@ -3678,7 +3678,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
                 <div ref={coachChatEndRef} />
               </div>
 
-              <div className="space-y-2.5 pt-2 border-t border-black/10">
+              <div className="space-y-2.5 pt-2 border-t border-black/10 shrink-0">
                 <div className="flex flex-wrap gap-1.5">
                   {quickPrompts.map((prompt) => (
                     <button
