@@ -101,7 +101,23 @@ module.exports = async function handler(req, res) {
     }
   } catch (err) {}
 
-  // 4. Return 200 with empty choice so frontend seamlessly uses its conversational smart coach
+  // 4. Fast Pollinations GET fallback
+  try {
+    const sysMsg = messages.find((m) => m.role === 'system')?.content || '';
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
+    const prompt = encodeURIComponent(`${sysMsg}\n\nUser: ${lastUserMsg}\nAssistant:`);
+    const getRes = await fetch(`https://text.pollinations.ai/${prompt}?model=openai`);
+    if (getRes.ok) {
+      const getText = await getRes.text();
+      if (getText && getText.trim() && !getText.includes('IMPORTANT NOTICE')) {
+        return res.status(200).json({
+          choices: [{ message: { role: 'assistant', content: getText.trim() } }]
+        });
+      }
+    }
+  } catch (err) {}
+
+  // 5. Return 200 with empty choice so frontend seamlessly uses its conversational smart coach
   return res.status(200).json({
     choices: [{ message: { role: 'assistant', content: '' } }]
   });
