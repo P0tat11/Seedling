@@ -3187,6 +3187,288 @@ FULL WEBSITE & SHOP SNAPSHOT:
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Back to Home Hub</span>
               </button>
+              <h1 className="text-2xl sm:text-3xl font-black">Smart Goal & Menu Builder</h1>
+            </div>
+
+            <button
+              onClick={onNext}
+              className={`inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full border-2 font-black text-sm cursor-pointer ${theme.primaryBtn}`}
+            >
+              <span>Ask AI Coach</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className={`lg:col-span-5 ${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-6 space-y-4`}>
+              <h2 className="text-lg font-black">1. Business Goal & Math Engine</h2>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-extrabold mb-1">Business Name</label>
+                  <input
+                    type="text"
+                    value={businessName}
+                    onChange={(e) => setBusinessName(censorKidSafeText(e.target.value))}
+                    placeholder="My Pop-Up Shop"
+                    className={`w-full px-3.5 py-2.5 rounded-2xl border-2 text-sm font-bold ${theme.inputBg}`}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-extrabold mb-1">Category</label>
+                    <select
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className={`w-full px-3 py-2.5 rounded-2xl border-2 text-sm font-bold ${theme.inputBg}`}
+                    >
+                      {CATEGORIES.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.emoji} {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-extrabold mb-1">Saving Up For</label>
+                    <input
+                      type="text"
+                      value={goalItemName}
+                      onChange={(e) => setGoalItemName(censorKidSafeText(e.target.value))}
+                      placeholder="e.g. Video Game"
+                      className={`w-full px-3.5 py-2.5 rounded-2xl border-2 text-sm font-bold ${theme.inputBg}`}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-extrabold mb-1">Profit Goal ($)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={financialGoal}
+                      onChange={(e) => setFinancialGoal(Math.max(0, Number(e.target.value)))}
+                      className={`w-full px-3 py-2 rounded-2xl border-2 text-sm font-black ${theme.inputBg}`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-extrabold mb-1">Days Open</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="30"
+                      value={durationDays}
+                      onChange={(e) => setDurationDays(Math.max(1, Number(e.target.value)))}
+                      className={`w-full px-3 py-2 rounded-2xl border-2 text-sm font-black ${theme.inputBg}`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-extrabold mb-1">Supplies ($)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={materialCost}
+                      onChange={(e) => setMaterialCost(Math.max(0, Number(e.target.value)))}
+                      className={`w-full px-3 py-2 rounded-2xl border-2 text-sm font-black ${theme.inputBg}`}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className={`p-4 rounded-2xl border ${theme.innerCream} grid grid-cols-3 gap-2 text-center`}>
+                <div>
+                  <div className="text-[10px] font-extrabold uppercase opacity-75">Break-Even</div>
+                  <div className="text-base font-black text-amber-500">${breakEvenPoint.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-extrabold uppercase opacity-75">Total Target</div>
+                  <div className="text-base font-black text-emerald-500">${totalTargetRevenue.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-extrabold uppercase opacity-75">Daily Target</div>
+                  <div className="text-base font-black text-sky-500">${dailySalesTarget.toFixed(2)}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className={`lg:col-span-7 ${theme.card} border-2 ${theme.cardShadow} rounded-3xl p-6 space-y-4`}>
+              <h2 className="text-lg font-black">2. Product Menu & Cartoon Stickers</h2>
+
+              <form onSubmit={handleAddProduct} className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                <input
+                  type="text"
+                  disabled={isGeneratingImg}
+                  value={newItemName}
+                  onChange={(e) => setNewItemName(censorKidSafeText(e.target.value))}
+                  placeholder="Item name (e.g. Lemonade, Slime)"
+                  className={`sm:col-span-5 px-3.5 py-2.5 rounded-2xl border-2 text-sm font-bold ${theme.inputBg}`}
+                />
+                <input
+                  type="number"
+                  step="0.25"
+                  min="0.25"
+                  disabled={isGeneratingImg}
+                  value={newItemPrice}
+                  onChange={(e) => setNewItemPrice(e.target.value)}
+                  placeholder="Price ($)"
+                  className={`sm:col-span-2 px-3.5 py-2.5 rounded-2xl border-2 text-sm font-black ${theme.inputBg}`}
+                />
+                <input
+                  type="number"
+                  step="0.05"
+                  min="0"
+                  disabled={isGeneratingImg}
+                  value={newItemCost}
+                  onChange={(e) => setNewItemCost(e.target.value)}
+                  placeholder="Cost ($)"
+                  className={`sm:col-span-2 px-3.5 py-2.5 rounded-2xl border-2 text-sm font-bold ${theme.inputBg}`}
+                />
+                <button
+                  type="submit"
+                  disabled={isGeneratingImg}
+                  className={`sm:col-span-3 py-2.5 px-4 rounded-2xl border-2 font-black text-xs cursor-pointer ${theme.primaryBtn}`}
+                >
+                  {isGeneratingImg ? '🎨 Drawing...' : '+ Add Item'}
+                </button>
+              </form>
+
+              {itemError && <div className="text-xs font-black text-rose-500">{itemError}</div>}
+
+              {products.length === 0 ? (
+                <div className={`p-8 rounded-2xl border-2 border-dashed text-center space-y-1 ${theme.innerCream}`}>
+                  <div className="text-3xl">🎨</div>
+                  <div className="font-black text-sm">Your Menu is Empty</div>
+                  <p className={`text-xs ${theme.mutedText}`}>
+                    Type an item name and price above—a cute cartoon sticker is drawn automatically!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                  {products.map((prod) => (
+                    <div
+                      key={prod.id}
+                      className={`p-3 rounded-2xl border flex items-center justify-between gap-2 ${theme.innerCream}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="px-2 py-0.5 rounded bg-slate-900 text-amber-300 font-mono text-xs font-bold">
+                          {prod.barcode}
+                        </span>
+                        {prod.imageUrl ? (
+                          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-100 via-amber-50 to-emerald-100 p-1 border border-slate-200/80 flex-shrink-0 overflow-hidden">
+                            <img
+                              src={prod.imageUrl}
+                              alt={prod.name}
+                              className="w-full h-full object-cover rounded-xl"
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-3xl">{prod.emoji || '🛍️'}</span>
+                        )}
+                        <div>
+                          <div className="font-black text-sm">{prod.name}</div>
+                          <div className={`text-[11px] ${theme.mutedText}`}>
+                            Supply cost: ${prod.unitCost.toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs font-black text-emerald-500">$</span>
+                          <input
+                            type="number"
+                            step="0.25"
+                            min="0.25"
+                            value={prod.price}
+                            onChange={(e) => {
+                              const updatedPrice = Math.max(0.25, parseFloat(e.target.value) || 0.25);
+                              setProducts((prev) =>
+                                prev.map((item) =>
+                                  item.id === prod.id
+                                    ? { ...item, price: Number(updatedPrice.toFixed(2)) }
+                                    : item
+                                )
+                              );
+                            }}
+                            aria-label={`Edit price for ${prod.name}`}
+                            className={`w-16 px-2 py-1 rounded-xl border text-xs font-black text-emerald-600 ${theme.inputBg}`}
+                          />
+                        </div>
+                        <button
+                          onClick={() => handleDeleteProduct(prod.id)}
+                          className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-xl cursor-pointer"
+                          title="Delete item"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ============================================================================
+    // MODULE 2: AI COACH & LIVE WEATHER / SEASONAL ML FORECASTER
+    // ============================================================================
+    function PennyCoachPage({
+      theme,
+      activeMascot,
+      businessName,
+      goalItemName,
+      mlEngine,
+      pennyAnalysis,
+      liveWeatherReport,
+      forecastDow,
+      setForecastDow,
+      aiEngineStatus,
+      chatMessages,
+      isAiTyping,
+      onSendChat,
+      onAddSuggestedItem,
+      onApplyOptimalPrice,
+      onNext,
+      onBackHome
+    }) {
+      const [inputText, setInputText] = useState('');
+      const [mlSubTab, setMlSubTab] = useState('forecast');
+      const [addedSuggestionMsg, setAddedSuggestionMsg] = useState('');
+      const coachChatEndRef = useRef(null);
+
+      useEffect(() => {
+        coachChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, [chatMessages, isAiTyping]);
+
+      const quickPrompts = [
+        `How are my sales & profit looking?`,
+        `Add Chocolate Chip Cookies to my inventory`,
+        `What price should I charge right now?`,
+        `Give me a catchy sign idea for ${goalItemName}`
+      ];
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!inputText.trim() || isAiTyping) return;
+        onSendChat(inputText);
+        setInputText('');
+      };
+
+      return (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <button
+                onClick={onBackHome}
+                className={`inline-flex items-center gap-1.5 text-xs font-extrabold px-3 py-1 rounded-full border mb-2 cursor-pointer ${theme.pillBg}`}
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Home Hub</span>
+              </button>
               <h1 className="text-2xl sm:text-3xl font-black">
                 {activeMascot.shortName} — AI Coach & ML Forecaster
               </h1>
