@@ -235,12 +235,12 @@
     };
 
     const MASCOTS = [
-      { id: 'parrot', shortName: 'Coach Maya', name: 'Maya • AI Business Coach', vibe: 'Warm & Strategic' },
-      { id: 'sprout', shortName: 'Coach Leo', name: 'Leo • AI Business Coach', vibe: 'Upbeat & Creative' },
-      { id: 'carrot', shortName: 'Coach Sam', name: 'Sam • AI Business Coach', vibe: 'Fast & Energetic' },
-      { id: 'broccoli', shortName: 'Coach Alex', name: 'Alex • AI Business Coach', vibe: 'Smart Planner' },
-      { id: 'kiwi', shortName: 'Coach Kira', name: 'Kira • AI Business Coach', vibe: 'Friendly & Clever' },
-      { id: 'tomato', shortName: 'Coach Max', name: 'Max • AI Business Coach', vibe: 'Bold & Cheerful' }
+      { id: 'parrot', shortName: 'Penny Parrot', name: 'Penny • AI Business Coach', vibe: 'Chatty & Clever' },
+      { id: 'sprout', shortName: 'Pip Sprout', name: 'Pip • AI Business Coach', vibe: 'Sunny & Growing' },
+      { id: 'carrot', shortName: 'Crunchie', name: 'Crunchie • AI Business Coach', vibe: 'Fast & Energetic' },
+      { id: 'broccoli', shortName: 'Broc', name: 'Broc • AI Business Coach', vibe: 'Smart Planner' },
+      { id: 'kiwi', shortName: 'Kiki Kiwi', name: 'Kiki • AI Business Coach', vibe: 'Sweet & Creative' },
+      { id: 'tomato', shortName: 'Toma', name: 'Toma • AI Business Coach', vibe: 'Bold & Cheerful' }
     ];
 
     const CATEGORIES = [
@@ -449,95 +449,228 @@
     }
 
     function PixelMascot({ type = 'parrot', size = 56, circular = false, isTalking = false }) {
-      const palettes = {
-        parrot: { bg1: '#ECFDF5', bg2: '#A7F3D0', skin1: '#FDE68A', skin2: '#F59E0B', hair: '#065F46', shirt: '#10B981', badge: '🦜' },
-        sprout: { bg1: '#FEFCE8', bg2: '#D9F99D', skin1: '#FED7AA', skin2: '#FB923C', hair: '#3F6212', shirt: '#65A30D', badge: '🌱' },
-        carrot: { bg1: '#FFF7ED', bg2: '#FED7AA', skin1: '#FDE68A', skin2: '#F59E0B', hair: '#9A3412', shirt: '#EA580C', badge: '🥕' },
-        broccoli: { bg1: '#F0FDF4', bg2: '#BBF7D0', skin1: '#E0E7FF', skin2: '#A5B4FC', hair: '#14532D', shirt: '#16A34A', badge: '🥦' },
-        kiwi: { bg1: '#FEF9C3', bg2: '#BEF264', skin1: '#FDE68A', skin2: '#D97706', hair: '#713F12', shirt: '#84CC16', badge: '🥝' },
-        tomato: { bg1: '#FFF1F2', bg2: '#FECDD3', skin1: '#FED7AA', skin2: '#F97316', hair: '#881337', shirt: '#E11D48', badge: '🍅' }
-      };
-      const p = palettes[type] || palettes.parrot;
-      const uid = `coach-${type}`;
+      const uid = `veg-${type}`;
 
       return (
         <div
           style={{ width: size, height: size }}
           className={`relative inline-flex items-center justify-center shrink-0 select-none transition-transform duration-200 ${
-            circular ? 'rounded-full bg-white border-2 border-emerald-700/25 p-0.5 shadow-md overflow-hidden' : 'rounded-2xl overflow-hidden shadow-sm'
+            circular
+              ? 'rounded-full bg-white border-2 border-emerald-700/25 p-1 shadow-md overflow-hidden'
+              : 'rounded-2xl overflow-hidden'
           } ${isTalking ? 'scale-105 ring-2 ring-emerald-400' : 'hover:scale-105'}`}
         >
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <defs>
-              <radialGradient id={`${uid}-bg`} cx="35%" cy="25%" r="80%">
-                <stop offset="0%" stopColor={p.bg1} />
-                <stop offset="100%" stopColor={p.bg2} />
+              <radialGradient id={`${uid}-glow`} cx="35%" cy="25%" r="80%">
+                <stop offset="0%" stopColor="#FFFFFF" />
+                <stop offset="100%" stopColor="#ECFDF5" />
               </radialGradient>
-              <linearGradient id={`${uid}-skin`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={p.skin1} />
-                <stop offset="100%" stopColor={p.skin2} />
+              <linearGradient id={`${uid}-carrot`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#FB923C" />
+                <stop offset="55%" stopColor="#F97316" />
+                <stop offset="100%" stopColor="#C2410C" />
               </linearGradient>
-              <linearGradient id={`${uid}-shirt`} x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor={p.shirt} />
-                <stop offset="100%" stopColor="#0F172A" />
+              <radialGradient id={`${uid}-tomato`} cx="35%" cy="30%" r="70%">
+                <stop offset="0%" stopColor="#FCA5A5" />
+                <stop offset="35%" stopColor="#EF4444" />
+                <stop offset="100%" stopColor="#991B1B" />
+              </radialGradient>
+              <radialGradient id={`${uid}-sprout`} cx="35%" cy="30%" r="70%">
+                <stop offset="0%" stopColor="#FEF08A" />
+                <stop offset="50%" stopColor="#A3E635" />
+                <stop offset="100%" stopColor="#4D7C0F" />
+              </radialGradient>
+              <radialGradient id={`${uid}-broc`} cx="35%" cy="25%" r="75%">
+                <stop offset="0%" stopColor="#4ADE80" />
+                <stop offset="60%" stopColor="#16A34A" />
+                <stop offset="100%" stopColor="#14532D" />
+              </radialGradient>
+              <radialGradient id={`${uid}-kiwi-skin`} cx="35%" cy="30%" r="75%">
+                <stop offset="0%" stopColor="#B45309" />
+                <stop offset="100%" stopColor="#78350F" />
+              </radialGradient>
+              <radialGradient id={`${uid}-kiwi-flesh`} cx="40%" cy="35%" r="70%">
+                <stop offset="0%" stopColor="#BEF264" />
+                <stop offset="65%" stopColor="#65A30D" />
+                <stop offset="100%" stopColor="#3F6212" />
+              </radialGradient>
+              <linearGradient id={`${uid}-parrot`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#34D399" />
+                <stop offset="60%" stopColor="#10B981" />
+                <stop offset="100%" stopColor="#047857" />
               </linearGradient>
             </defs>
 
-            {/* Studio Backdrop */}
-            <circle cx="50" cy="50" r="50" fill={`url(#${uid}-bg)`} />
-            <circle cx="24" cy="22" r="16" fill="#FFFFFF" opacity="0.45" />
+            <circle cx="50" cy="50" r="49" fill={`url(#${uid}-glow)`} />
+            <ellipse cx="50" cy="89" rx="22" ry="5" fill="#0F172A" opacity="0.12" />
 
-            {/* Shoulders & Smart Blazer / Hoodie */}
-            <path d="M18 96 C20 74, 34 68, 50 68 C66 68, 80 74, 82 96 Z" fill={`url(#${uid}-shirt)`} />
-            <path d="M41 68 L50 81 L59 68 Z" fill="#FFFFFF" opacity="0.9" />
-
-            {/* Neck & Soft Shadow */}
-            <rect x="43" y="56" width="14" height="15" rx="6" fill={`url(#${uid}-skin)`} />
-            <path d="M43 60 Q50 65 57 60 L57 65 Q50 69 43 65 Z" fill="#000000" opacity="0.12" />
-
-            {/* Back Hair */}
-            <path d="M27 42 C25 22, 37 14, 50 14 C63 14, 75 22, 73 42 C73 52, 68 58, 64 58 L36 58 C32 58, 27 52, 27 42 Z" fill={p.hair} />
-
-            {/* Ears */}
-            <circle cx="29" cy="44" r="5.5" fill={`url(#${uid}-skin)`} />
-            <circle cx="71" cy="44" r="5.5" fill={`url(#${uid}-skin)`} />
-
-            {/* Realistic Sculpted Face */}
-            <path d="M30 34 C30 22, 70 22, 70 34 C70 50, 62 62, 50 62 C38 62, 30 50, 30 34 Z" fill={`url(#${uid}-skin)`} />
-
-            {/* Soft Cheek Blush */}
-            <ellipse cx="37" cy="48" rx="4.5" ry="2.6" fill="#FB7185" opacity="0.35" />
-            <ellipse cx="63" cy="48" rx="4.5" ry="2.6" fill="#FB7185" opacity="0.35" />
-
-            {/* Expressive Eyebrows */}
-            <path d="M35 35 Q40 32.5 45 34.5" stroke={p.hair} strokeWidth="2.4" strokeLinecap="round" fill="none" />
-            <path d="M55 34.5 Q60 32.5 65 35" stroke={p.hair} strokeWidth="2.4" strokeLinecap="round" fill="none" />
-
-            {/* Detailed Eyes with Iris & Catchlight */}
-            <ellipse cx="40.5" cy="41.5" rx="4.2" ry="4.5" fill="#FFFFFF" />
-            <circle cx="41" cy="41.8" r="2.7" fill="#1E293B" />
-            <circle cx="42" cy="40.6" r="1" fill="#FFFFFF" />
-
-            <ellipse cx="59.5" cy="41.5" rx="4.2" ry="4.5" fill="#FFFFFF" />
-            <circle cx="59" cy="41.8" r="2.7" fill="#1E293B" />
-            <circle cx="60" cy="40.6" r="1" fill="#FFFFFF" />
-
-            {/* Subtle Nose Bridge & Tip */}
-            <path d="M49.5 42 L48.5 48.5 Q50 50 51.5 48.5" stroke="#92400E" strokeWidth="1.6" strokeLinecap="round" fill="none" opacity="0.55" />
-
-            {/* Natural Warm Smile / Animated Talking Mouth */}
-            {isTalking ? (
-              <ellipse cx="50" cy="54" rx="4.8" ry="3.6" fill="#9F1239" />
-            ) : (
-              <path d="M43.5 53 Q50 58.2 56.5 53" stroke="#7C2D12" strokeWidth="2.3" strokeLinecap="round" fill="none" />
+            {/* 1. REALISTIC ILLUSTRATED SPROUT */}
+            {type === 'sprout' && (
+              <g>
+                {/* Lush Leaves */}
+                <path d="M50 32 C34 14, 14 20, 18 34 C24 44, 42 40, 50 32 Z" fill="#22C55E" />
+                <path d="M48 32 C35 22, 24 25, 20 31" stroke="#BBF7D0" strokeWidth="2" fill="none" strokeLinecap="round" />
+                <path d="M50 30 C66 12, 86 18, 82 32 C76 42, 58 38, 50 30 Z" fill="#16A34A" />
+                <path d="M52 30 C65 20, 76 23, 80 29" stroke="#BBF7D0" strokeWidth="2" fill="none" strokeLinecap="round" />
+                {/* Stem */}
+                <path d="M50 30 L50 46" stroke="#15803D" strokeWidth="5" strokeLinecap="round" />
+                {/* Glossy Seed Body */}
+                <path d="M50 40 C31 40, 24 58, 28 73 C32 84, 68 84, 72 73 C76 58, 69 40, 50 40 Z" fill={`url(#${uid}-sprout)`} />
+                <ellipse cx="38" cy="52" rx="5" ry="9" transform="rotate(-20 38 52)" fill="#FFFFFF" opacity="0.45" />
+                {/* Eyes & Smile */}
+                <circle cx="41" cy="61" r="4.2" fill="#0F172A" />
+                <circle cx="39.6" cy="59.6" r="1.5" fill="#FFFFFF" />
+                <circle cx="59" cy="61" r="4.2" fill="#0F172A" />
+                <circle cx="57.6" cy="59.6" r="1.5" fill="#FFFFFF" />
+                <ellipse cx="35" cy="67" rx="4" ry="2.2" fill="#FB7185" opacity="0.45" />
+                <ellipse cx="65" cy="67" rx="4" ry="2.2" fill="#FB7185" opacity="0.45" />
+                {isTalking ? (
+                  <ellipse cx="50" cy="69" rx="4.5" ry="3.5" fill="#BE123C" />
+                ) : (
+                  <path d="M44 67 Q50 73 56 67" stroke="#0F172A" strokeWidth="2.8" fill="none" strokeLinecap="round" />
+                )}
+              </g>
             )}
 
-            {/* Front Hair Swoop */}
-            <path d="M29 36 C30 20, 44 15, 56 17 C67 19, 72 27, 71 36 C66 27, 56 25, 45 27 C37 28, 32 31, 29 36 Z" fill={p.hair} />
+            {/* 2. REALISTIC ILLUSTRATED CARROT */}
+            {type === 'carrot' && (
+              <g>
+                {/* Leafy Green Top */}
+                <path d="M50 28 C42 12, 30 12, 34 24 C38 30, 46 30, 50 28 Z" fill="#16A34A" />
+                <path d="M50 28 C50 8, 58 8, 56 24 C55 29, 52 30, 50 28 Z" fill="#22C55E" />
+                <path d="M50 28 C58 12, 70 14, 66 25 C62 31, 54 30, 50 28 Z" fill="#15803D" />
+                {/* Tapered Textured Carrot Body */}
+                <path d="M31 34 C31 24, 69 24, 69 34 C69 54, 57 86, 50 88 C43 86, 31 54, 31 34 Z" fill={`url(#${uid}-carrot)`} />
+                {/* Natural Carrot Ridges & Specular Highlight */}
+                <path d="M36 42 Q44 44 48 42" stroke="#9A3412" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.45" />
+                <path d="M53 54 Q61 56 64 54" stroke="#9A3412" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.45" />
+                <path d="M40 66 Q47 68 51 66" stroke="#9A3412" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.45" />
+                <ellipse cx="38" cy="40" rx="3.5" ry="10" transform="rotate(-10 38 40)" fill="#FED7AA" opacity="0.55" />
+                {/* Cute Eyes & Smile */}
+                <circle cx="42" cy="47" r="4" fill="#0F172A" />
+                <circle cx="40.8" cy="45.8" r="1.4" fill="#FFFFFF" />
+                <circle cx="58" cy="47" r="4" fill="#0F172A" />
+                <circle cx="56.8" cy="45.8" r="1.4" fill="#FFFFFF" />
+                {isTalking ? (
+                  <ellipse cx="50" cy="56" rx="4" ry="3.2" fill="#7F1D1D" />
+                ) : (
+                  <path d="M45 54 Q50 59 55 54" stroke="#0F172A" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+                )}
+              </g>
+            )}
 
-            {/* Headset Mic for Realistic Assistant Vibe */}
-            <path d="M28 43 C28 53, 36 56, 44 55.5" stroke="#334155" strokeWidth="2.2" fill="none" strokeLinecap="round" />
-            <circle cx="44.5" cy="55.5" r="2.2" fill="#0F172A" />
+            {/* 3. REALISTIC ILLUSTRATED BROCCOLI */}
+            {type === 'broccoli' && (
+              <g>
+                {/* Thick Tender Stalk */}
+                <path d="M38 52 L34 83 C34 86, 66 86, 66 83 L62 52 Z" fill="#86EFAC" />
+                <path d="M42 56 L40 81" stroke="#4ADE80" strokeWidth="3" strokeLinecap="round" />
+                {/* Lush Floret Crown */}
+                <circle cx="31" cy="43" r="15" fill={`url(#${uid}-broc)`} />
+                <circle cx="69" cy="43" r="15" fill={`url(#${uid}-broc)`} />
+                <circle cx="42" cy="30" r="17" fill={`url(#${uid}-broc)`} />
+                <circle cx="59" cy="31" r="16" fill={`url(#${uid}-broc)`} />
+                <circle cx="50" cy="42" r="18" fill={`url(#${uid}-broc)`} />
+                {/* Floret Texture Dots */}
+                <circle cx="36" cy="26" r="2" fill="#BBF7D0" opacity="0.65" />
+                <circle cx="45" cy="22" r="2.2" fill="#BBF7D0" opacity="0.65" />
+                <circle cx="57" cy="24" r="2" fill="#BBF7D0" opacity="0.65" />
+                <circle cx="27" cy="38" r="2" fill="#BBF7D0" opacity="0.55" />
+                {/* Face on Stalk */}
+                <circle cx="43" cy="64" r="3.8" fill="#0F172A" />
+                <circle cx="41.8" cy="62.8" r="1.3" fill="#FFFFFF" />
+                <circle cx="57" cy="64" r="3.8" fill="#0F172A" />
+                <circle cx="55.8" cy="62.8" r="1.3" fill="#FFFFFF" />
+                {isTalking ? (
+                  <ellipse cx="50" cy="72" rx="4" ry="3" fill="#14532D" />
+                ) : (
+                  <path d="M45 70 Q50 75 55 70" stroke="#0F172A" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+                )}
+              </g>
+            )}
+
+            {/* 4. REALISTIC ILLUSTRATED KIWI */}
+            {type === 'kiwi' && (
+              <g>
+                {/* Fuzzy Brown Outer Rim */}
+                <circle cx="50" cy="52" r="35" fill={`url(#${uid}-kiwi-skin)`} />
+                {/* Vibrant Green Sliced Flesh */}
+                <circle cx="50" cy="52" r="29" fill={`url(#${uid}-kiwi-flesh)`} />
+                {/* Creamy White Core */}
+                <ellipse cx="50" cy="52" rx="11" ry="13" fill="#FEF9C3" opacity="0.9" />
+                {/* Tiny Black Kiwi Seeds Ring */}
+                {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => {
+                  const rad = (deg * Math.PI) / 180;
+                  const sx = 50 + Math.cos(rad) * 17;
+                  const sy = 52 + Math.sin(rad) * 17;
+                  return <circle key={deg} cx={sx} cy={sy} r="1.6" fill="#1E293B" />;
+                })}
+                {/* Cute Eyes & Smile */}
+                <circle cx="42" cy="49" r="3.8" fill="#0F172A" />
+                <circle cx="40.8" cy="47.8" r="1.3" fill="#FFFFFF" />
+                <circle cx="58" cy="49" r="3.8" fill="#0F172A" />
+                <circle cx="56.8" cy="47.8" r="1.3" fill="#FFFFFF" />
+                {isTalking ? (
+                  <ellipse cx="50" cy="58" rx="4" ry="3" fill="#9F1239" />
+                ) : (
+                  <path d="M45 56 Q50 61 55 56" stroke="#0F172A" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+                )}
+              </g>
+            )}
+
+            {/* 5. REALISTIC ILLUSTRATED TOMATO */}
+            {type === 'tomato' && (
+              <g>
+                {/* Plump Glossy Red Tomato */}
+                <ellipse cx="50" cy="56" rx="35" ry="30" fill={`url(#${uid}-tomato)`} />
+                {/* Glossy Shine */}
+                <ellipse cx="34" cy="44" rx="7" ry="4" transform="rotate(-28 34 44)" fill="#FFFFFF" opacity="0.55" />
+                {/* Star-Shaped Green Calyx Leaves */}
+                <path d="M50 30 L34 22 L42 32 L26 36 L44 37 L50 45 L56 37 L74 36 L58 32 L66 22 Z" fill="#15803D" />
+                <path d="M50 28 L50 18" stroke="#166534" strokeWidth="4" strokeLinecap="round" />
+                {/* Eyes & Smile */}
+                <circle cx="41" cy="55" r="4.2" fill="#0F172A" />
+                <circle cx="39.6" cy="53.6" r="1.5" fill="#FFFFFF" />
+                <circle cx="59" cy="55" r="4.2" fill="#0F172A" />
+                <circle cx="57.6" cy="53.6" r="1.5" fill="#FFFFFF" />
+                <ellipse cx="34" cy="61" rx="4" ry="2.2" fill="#FECDD3" opacity="0.55" />
+                <ellipse cx="66" cy="61" rx="4" ry="2.2" fill="#FECDD3" opacity="0.55" />
+                {isTalking ? (
+                  <ellipse cx="50" cy="64" rx="4.5" ry="3.4" fill="#450A0A" />
+                ) : (
+                  <path d="M44 62 Q50 68 56 62" stroke="#0F172A" strokeWidth="2.8" fill="none" strokeLinecap="round" />
+                )}
+              </g>
+            )}
+
+            {/* 6. REALISTIC ILLUSTRATED TROPICAL PARROT */}
+            {type === 'parrot' && (
+              <g>
+                {/* Tropical Crest Feathers */}
+                <path d="M46 22 C40 10, 32 12, 38 24 Z" fill="#F43F5E" />
+                <path d="M52 21 C50 8, 42 10, 46 23 Z" fill="#FBBF24" />
+                {/* Plump Emerald Body */}
+                <ellipse cx="50" cy="55" rx="28" ry="32" fill={`url(#${uid}-parrot)`} />
+                {/* Wing Feather */}
+                <path d="M24 46 C18 58, 22 72, 32 74 C34 62, 32 50, 24 46 Z" fill="#059669" />
+                <path d="M76 46 C82 58, 78 72, 68 74 C66 62, 68 50, 76 46 Z" fill="#059669" />
+                {/* Soft White Cheek Patches */}
+                <circle cx="39" cy="44" r="9" fill="#FFFFFF" />
+                <circle cx="61" cy="44" r="9" fill="#FFFFFF" />
+                {/* Eyes */}
+                <circle cx="40" cy="44" r="4" fill="#0F172A" />
+                <circle cx="38.8" cy="42.8" r="1.4" fill="#FFFFFF" />
+                <circle cx="60" cy="44" r="4" fill="#0F172A" />
+                <circle cx="58.8" cy="42.8" r="1.4" fill="#FFFFFF" />
+                {/* Curved Golden-Coral Beak */}
+                <path d="M44 51 C44 46, 56 46, 56 51 C56 58, 50 62, 50 62 C50 62, 44 58, 44 51 Z" fill="#F59E0B" />
+                <path d="M45 55 Q50 58 55 55 L50 63 Z" fill={isTalking ? '#E11D48' : '#D97706'} />
+                {/* Little Feet */}
+                <path d="M40 85 L37 89 M40 85 L43 89" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
+                <path d="M60 85 L57 89 M60 85 L63 89" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
+              </g>
+            )}
           </svg>
         </div>
       );
