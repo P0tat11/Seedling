@@ -2210,7 +2210,7 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
           if (res.ok) {
             const data = await res.json();
             const ollamaContent = data?.choices?.[0]?.message?.content;
-            if (ollamaContent) {
+            if (ollamaContent && ollamaContent.trim().length >= 8) {
               replyText = censorKidSafeText(ollamaContent.trim());
               setAiEngineStatus('AI Online');
             }
@@ -2275,9 +2275,13 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
               teen: `To complement your current menu in ${tempF}°F weather, consider adding: ${ideaText}. Say "add [item]" and I'll set it up with a product graphic.`
             });
           } else if (
-            // Question: "What should I sell today / from my inventory?"
-            (lower.includes('what') || lower.includes('which') || lower.includes('recommend') || lower.includes('best')) &&
-            (lower.includes('sell') || lower.includes('item') || lower.includes('product') || lower.includes('today'))
+            // Question: "What should I sell that I have?" / "What should I sell today?"
+            lower.includes('should i sell') ||
+            lower.includes('to sell') ||
+            lower.includes('that i have') ||
+            lower.includes('already have') ||
+            ((lower.includes('what') || lower.includes('which') || lower.includes('recommend') || lower.includes('best')) &&
+              (lower.includes('sell') || lower.includes('item') || lower.includes('product') || lower.includes('today')))
           ) {
             if (products.length === 0) {
               replyText = formatByAge(kidAgeGroup, {
