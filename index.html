@@ -2659,8 +2659,7 @@ Live Shop Data:
               goalItemName={displayGoalItem}
               activeDay={activeDay}
               salesLog={salesLog}
-              totalRevenueEarned={totalRevenueEarned}
-              netProfitEarned={netProfitEarned}
+              dailySalesTarget={dailySalesTarget}
               shopInsights={shopInsights}
               jarAllocations={jarAllocations}
               setJarAllocations={setJarAllocations}
@@ -4338,8 +4337,7 @@ Live Shop Data:
       goalItemName,
       activeDay,
       salesLog,
-      totalRevenueEarned,
-      netProfitEarned,
+      dailySalesTarget,
       shopInsights,
       jarAllocations,
       setJarAllocations,
@@ -4348,31 +4346,35 @@ Live Shop Data:
     }) {
       const todaySales = salesLog.filter((tx) => tx.day === activeDay);
       const todayRevenue = Number(todaySales.reduce((s, t) => s + t.total, 0).toFixed(2));
+      const todayTips = Number(todaySales.reduce((sum, tx) => sum + (tx.tip || 0), 0).toFixed(2));
+      const todayTipCount = todaySales.filter((tx) => tx.tip > 0).length;
+      const todayProfit = Number(todaySales.reduce((sum, tx) => sum + (tx.profit || 0), 0).toFixed(2));
       const bestItemName =
         todaySales.length > 0
           ? todaySales[0].itemsSummary.replace(/^\d+x\s*/, '').split(',')[0]
           : 'Your Featured Item';
 
-      const splittableMoney = Math.max(0, netProfitEarned > 0 ? netProfitEarned : totalRevenueEarned);
+      const splittableMoney = Math.max(0, todayProfit + todayTips);
       const goalDollars = Number(((splittableMoney * jarAllocations.goal) / 100).toFixed(2));
       const suppliesDollars = Number(((splittableMoney * jarAllocations.supplies) / 100).toFixed(2));
       const charityDollars = Number(((splittableMoney * jarAllocations.charity) / 100).toFixed(2));
 
-      const adjustJar = (targetJar) => {
+      const updateJarAllocation = (targetJar, requestedValue) => {
+        const value = Math.max(0, Math.min(100, Math.round(Number(requestedValue) || 0)));
         setJarAllocations((prev) => {
-          if (targetJar === 'goal') {
-            const nextGoal = Math.min(80, prev.goal + 10);
-            const rem = 100 - nextGoal;
-            return { goal: nextGoal, supplies: Math.round(rem * 0.67), charity: 100 - nextGoal - Math.round(rem * 0.67) };
-          }
-          if (targetJar === 'supplies') {
-            const nextSup = Math.min(60, prev.supplies + 10);
-            const nextGoal = Math.max(20, 100 - nextSup - prev.charity);
-            return { goal: nextGoal, supplies: nextSup, charity: 100 - nextGoal - nextSup };
-          }
-          const nextChar = Math.min(40, prev.charity + 10);
-          const nextGoal = Math.max(20, 100 - prev.supplies - nextChar);
-          return { goal: nextGoal, supplies: prev.supplies, charity: nextChar };
+          const otherJars = ['goal', 'supplies', 'charity'].filter((jar) => jar !== targetJar);
+          const [firstOther, secondOther] = otherJars;
+          const remaining = 100 - value;
+          const otherTotal = prev[firstOther] + prev[secondOther];
+          const firstShare = otherTotal > 0 ? prev[firstOther] / otherTotal : 0.5;
+          const firstValue = Math.round(remaining * firstShare);
+
+          return {
+            ...prev,
+            [targetJar]: value,
+            [firstOther]: firstValue,
+            [secondOther]: remaining - firstValue
+          };
         });
       };
 
@@ -4403,32 +4405,49 @@ Live Shop Data:
               </button>
             </div>
 
-            <div className={`p-4 rounded-2xl border ${theme.innerCream} space-y-2 text-sm`}>
+            <div className={`p-4 rounded-2xl border ${theme.innerCream} space-y-3 text-sm`}>
               <div className="font-black text-emerald-500 text-xs uppercase">
-                {assistantDisplayName}’s 3-Bullet Shift Summary
+                {assistantDisplayName}’s Shift Summary
               </div>
-              <ul className="space-y-1.5 font-bold text-xs sm:text-sm">
-                <li>
-                  ⭐ <strong>Top Seller Today:</strong> {bestItemName} ({todaySales.length} orders logged)
-                </li>
-                <li>
-                  💰 <strong>Session Revenue & Profit:</strong> Earned ${todayRevenue.toFixed(2)} today (
-                  {netProfitEarned >= 0
-                    ? `+$${netProfitEarned.toFixed(2)} net profit!`
-                    : `$${Math.abs(netProfitEarned).toFixed(2)} to break-even`}
-                  )
-                </li>
-                <li>
-                  🌱 <strong>Tomorrow’s Shop Estimate:</strong> Aim for{' '}
-                  <strong>{shopInsights.tomorrowPredictedUnits} units</strong> during{' '}
-                  {shopInsights.weatherObj.label} to stay on track for {goalItemName}!
-                </li>
-              </ul>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
+                <div className={`p-3 rounded-xl border ${theme.card}`}>
+                  <div className="text-[11px] font-extrabold uppercase">Tips</div>
+                  <div className="text-lg font-black text-amber-500">${todayTips.toFixed(2)}</div>
+                  <div className={`text-[10px] font-bold ${theme.mutedText}`}>
+                    {todayTipCount} tip{todayTipCount === 1 ? '' : 's'}
+                  </div>
+                </div>
+                <div className={`p-3 rounded-xl border ${theme.card}`}>
+                  <div className="text-[11px] font-extrabold uppercase">Tomorrow’s Goal</div>
+                  <div className="text-lg font-black text-sky-500">${dailySalesTarget.toFixed(2)}</div>
+                  <div className={`text-[10px] font-bold ${theme.mutedText}`}>
+                    About {shopInsights.unitsNeededPerDayForGoal} items for {goalItemName}
+                  </div>
+                </div>
+                <div className={`p-3 rounded-xl border ${theme.card}`}>
+                  <div className="text-[11px] font-extrabold uppercase">Profit Made Today</div>
+                  <div className={`text-lg font-black ${todayProfit >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    ${todayProfit.toFixed(2)}
+                  </div>
+                  <div className={`text-[10px] font-bold ${theme.mutedText}`}>
+                    {todaySales.length} sale{todaySales.length === 1 ? '' : 's'} • ${todayRevenue.toFixed(2)} sales
+                  </div>
+                </div>
+              </div>
+              <p className={`text-xs font-bold ${theme.mutedText}`}>
+                ⭐ Top seller today: {bestItemName} ({todaySales.length} orders). Tomorrow, aim for $
+                {dailySalesTarget.toFixed(2)} in sales to keep saving for {goalItemName}.
+              </p>
             </div>
 
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-black">🪙 3-Jar Profit Splitter (${splittableMoney.toFixed(2)})</h3>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-base font-black">🪙 Choose Your 3-Jar Savings</h3>
+                  <p className={`text-[11px] font-bold ${theme.mutedText}`}>
+                    Split today’s profit and tips (${splittableMoney.toFixed(2)}). Jar percentages always add up to 100%.
+                  </p>
+                </div>
                 <div className="flex gap-1.5">
                   <button
                     type="button"
@@ -4453,13 +4472,19 @@ Live Shop Data:
                   <div className="font-black text-sm">My Goal ({jarAllocations.goal}%)</div>
                   <div className="text-xl font-black text-emerald-500">${goalDollars.toFixed(2)}</div>
                   <p className={`text-[11px] ${theme.mutedText}`}>For {goalItemName}</p>
-                  <button
-                    type="button"
-                    onClick={() => adjustJar('goal')}
-                    className="w-full py-1.5 rounded-full bg-emerald-500 text-slate-950 font-black text-xs cursor-pointer"
-                  >
-                    + Drop Coin (+10%)
-                  </button>
+                  <label className="block text-left text-[11px] font-bold">
+                    Save for my goal (%)
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={jarAllocations.goal}
+                      onChange={(e) => updateJarAllocation('goal', e.target.value)}
+                      aria-label="Percent to save for my goal"
+                      className={`mt-1 w-full px-3 py-2 rounded-xl border text-sm font-black ${theme.inputBg}`}
+                    />
+                  </label>
                 </div>
 
                 <div className={`p-4 rounded-2xl border-2 border-amber-400 ${theme.innerCream} space-y-2`}>
@@ -4467,27 +4492,39 @@ Live Shop Data:
                   <div className="font-black text-sm">Next Supplies ({jarAllocations.supplies}%)</div>
                   <div className="text-xl font-black text-amber-500">${suppliesDollars.toFixed(2)}</div>
                   <p className={`text-[11px] ${theme.mutedText}`}>Restock ingredients</p>
-                  <button
-                    type="button"
-                    onClick={() => adjustJar('supplies')}
-                    className="w-full py-1.5 rounded-full bg-amber-400 text-slate-950 font-black text-xs cursor-pointer"
-                  >
-                    + Drop Coin (+10%)
-                  </button>
+                  <label className="block text-left text-[11px] font-bold">
+                    Save for supplies (%)
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={jarAllocations.supplies}
+                      onChange={(e) => updateJarAllocation('supplies', e.target.value)}
+                      aria-label="Percent to save for supplies"
+                      className={`mt-1 w-full px-3 py-2 rounded-xl border text-sm font-black ${theme.inputBg}`}
+                    />
+                  </label>
                 </div>
 
                 <div className={`p-4 rounded-2xl border-2 border-rose-400 ${theme.innerCream} space-y-2`}>
                   <div className="text-3xl">❤️</div>
-                  <div className="font-black text-sm">Charity / Give ({jarAllocations.charity}%)</div>
+                  <div className="font-black text-sm">Give ({jarAllocations.charity}%)</div>
                   <div className="text-xl font-black text-rose-500">${charityDollars.toFixed(2)}</div>
                   <p className={`text-[11px] ${theme.mutedText}`}>Help your community</p>
-                  <button
-                    type="button"
-                    onClick={() => adjustJar('charity')}
-                    className="w-full py-1.5 rounded-full bg-rose-400 text-slate-950 font-black text-xs cursor-pointer"
-                  >
-                    + Drop Coin (+10%)
-                  </button>
+                  <label className="block text-left text-[11px] font-bold">
+                    Choose how much to give (%)
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={jarAllocations.charity}
+                      onChange={(e) => updateJarAllocation('charity', e.target.value)}
+                      aria-label="Percent to give"
+                      className={`mt-1 w-full px-3 py-2 rounded-xl border text-sm font-black ${theme.inputBg}`}
+                    />
+                  </label>
                 </div>
               </div>
             </div>
