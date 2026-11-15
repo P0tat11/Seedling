@@ -2015,48 +2015,65 @@
 
         // 1. Check if the user is answering the price for a pending product add!
         if (pendingProductToAdd) {
-          const priceMatch = censoredUserText.match(/\$?\s*(\d+(?:\.\d{1,2})?)/);
-          if (priceMatch) {
-            const parsedPrice = parseFloat(priceMatch[1]);
-            const itemToCreate = pendingProductToAdd;
+          const isQuestionOrCancel =
+            /\?/.test(censoredUserText) ||
+            /^(no|nah|nevermind|cancel|stop|skip|what|which|how|why|im asking|i'm asking|you tell)/i.test(
+              censoredUserText.trim()
+            );
+
+          if (isQuestionOrCancel) {
             setPendingProductToAdd(null);
-            setIsAiTyping(true);
-            const finalPrice = await addAiSuggestedProductToInventory(itemToCreate, parsedPrice);
-            const addedReply = formatByAge(kidAgeGroup, {
-              young: `Yay! I drew a cute cartoon picture of ${itemToCreate} and put it in your shop for $${finalPrice.toFixed(2)}! 🎉`,
-              kid: `Awesome! I generated a cartoon picture for ${itemToCreate} and added it to your inventory for $${finalPrice.toFixed(2)}! 🎨`,
-              tween: `Done! I created a custom cartoon sticker for ${itemToCreate} and added it to your menu at $${finalPrice.toFixed(2)}.`,
-              teen: `Added ${itemToCreate} to your inventory at $${finalPrice.toFixed(2)} with a generated product graphic.`
-            });
-            setChatMessages((prev) => [
-              ...prev,
-              { id: `ai-${Date.now()}-${Math.random()}`, role: 'ai', text: addedReply }
-            ]);
-            setIsAiTyping(false);
-            return;
           } else {
-            const askAgainReply = formatByAge(kidAgeGroup, {
-              young: `Oops! Tell me a number for the price of ${pendingProductToAdd}, like $2 or $3!`,
-              kid: `What price should I put on ${pendingProductToAdd}? Just type a number like $2.50!`,
-              tween: `Please give me a dollar amount for ${pendingProductToAdd} (for example, $2.50) so I can add it to your menu!`,
-              teen: `Specify a unit price (e.g., $2.50) for ${pendingProductToAdd} to finalize the inventory entry.`
-            });
-            setChatMessages((prev) => [
-              ...prev,
-              { id: `ai-${Date.now()}-${Math.random()}`, role: 'ai', text: askAgainReply }
-            ]);
-            return;
+            const priceMatch = censoredUserText.match(/\$?\s*(\d+(?:\.\d{1,2})?)/);
+            if (priceMatch) {
+              const parsedPrice = parseFloat(priceMatch[1]);
+              const itemToCreate = pendingProductToAdd;
+              setPendingProductToAdd(null);
+              setIsAiTyping(true);
+              const finalPrice = await addAiSuggestedProductToInventory(itemToCreate, parsedPrice);
+              const addedReply = formatByAge(kidAgeGroup, {
+                young: `Yay! I drew a cute cartoon picture of ${itemToCreate} and put it in your shop for $${finalPrice.toFixed(2)}! 🎉`,
+                kid: `Awesome! I generated a cartoon picture for ${itemToCreate} and added it to your inventory for $${finalPrice.toFixed(2)}! 🎨`,
+                tween: `Done! I created a custom cartoon sticker for ${itemToCreate} and added it to your menu at $${finalPrice.toFixed(2)}.`,
+                teen: `Added ${itemToCreate} to your inventory at $${finalPrice.toFixed(2)} with a generated product graphic.`
+              });
+              setChatMessages((prev) => [
+                ...prev,
+                { id: `ai-${Date.now()}-${Math.random()}`, role: 'ai', text: addedReply }
+              ]);
+              setIsAiTyping(false);
+              return;
+            } else {
+              const askAgainReply = formatByAge(kidAgeGroup, {
+                young: `Oops! Tell me a number for the price of ${pendingProductToAdd}, like $2 or $3!`,
+                kid: `What price should I put on ${pendingProductToAdd}? Just type a number like $2.50!`,
+                tween: `Please give me a dollar amount for ${pendingProductToAdd} (for example, $2.50) so I can add it to your menu!`,
+                teen: `Specify a unit price (e.g., $2.50) for ${pendingProductToAdd} to finalize the inventory entry.`
+              });
+              setChatMessages((prev) => [
+                ...prev,
+                { id: `ai-${Date.now()}-${Math.random()}`, role: 'ai', text: askAgainReply }
+              ]);
+              return;
+            }
           }
         }
 
-        // 2. Check if user is asking the AI to add a new product to their inventory
-        const addIntentMatch = censoredUserText.match(
-          /(?:add|put|create|list)\s+(?:a\s+|an\s+|some\s+)?(.+?)(?:\s+(?:to|in|into|on)\s+(?:my\s+|the\s+)?(?:inventory|menu|shop|store|register))?(?:\s+(?:for|at)\s+\$?\s*(\d+(?:\.\d{1,2})?))?$/i
-        );
-        const explicitInventoryMention = /(?:inventory|menu|shop|store|register)/i.test(censoredUserText);
-        const explicitAddVerb = /^(?:please\s+)?(?:add|put|create|list)\b/i.test(censoredUserText);
+        // 2. Check if user is commanding the AI to add a specific product (ignore questions like "what should I add?")
+        const isAskingForIdeas =
+          /\?/.test(censoredUserText) ||
+          /^(what|which|suggest|recommend|ideas?|can you suggest|what's something|whats something|what is something)/i.test(
+            censoredUserText.trim()
+          ) ||
+          /\b(?:should i add|could i add|can i add|to add)\b/i.test(censoredUserText);
 
-        if (addIntentMatch && (explicitInventoryMention || explicitAddVerb)) {
+        const addIntentMatch = !isAskingForIdeas
+          ? censoredUserText.match(
+              /^(?:please\s+|can you\s+)?(?:add|put|create|list)\s+(?:a\s+|an\s+|some\s+)?(.+?)(?:\s+(?:to|in|into|on)\s+(?:my\s+|the\s+)?(?:inventory|menu|shop|store|register))?(?:\s+(?:for|at)\s+\$?\s*(\d+(?:\.\d{1,2})?))?$/i
+            )
+          : null;
+
+        if (addIntentMatch) {
           let rawItem = (addIntentMatch[1] || '')
             .replace(/\s+(?:to|in|into|on)\s+(?:my\s+|the\s+)?(?:inventory|menu|shop|store|register).*$/i, '')
             .trim();
@@ -2067,7 +2084,8 @@
             inlinePrice = parseFloat(inlinePriceMatch[2]);
           }
 
-          if (rawItem && rawItem.length >= 2) {
+          const invalidItemNames = ['something', 'anything', 'item', 'product', 'to the menu', 'the menu', 'inventory'];
+          if (rawItem && rawItem.length >= 2 && !invalidItemNames.includes(rawItem.toLowerCase())) {
             const cleanItemTitle = rawItem
               .split(/\s+/)
               .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
@@ -2213,13 +2231,17 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
           );
           const existingNamesLower = products.map((p) => p.name.toLowerCase());
 
-          // Question: "Is there anything else I could sell that I don't have?" / New product ideas
+          // Question: "Is there anything else I could sell that I don't have?" / "What should I add?"
           if (
             lower.includes("don't have") ||
             lower.includes('dont have') ||
             lower.includes('anything else') ||
             lower.includes('something else') ||
             lower.includes('what else') ||
+            lower.includes('should i add') ||
+            lower.includes('could i add') ||
+            lower.includes('something i should add') ||
+            lower.includes('somthing i should add') ||
             lower.includes('new item') ||
             lower.includes('new product') ||
             (lower.includes('idea') && !lower.includes('sign'))
@@ -2256,14 +2278,6 @@ FULL LIVE WEBSITE & SHOP CONTEXT:
             // Question: "What should I sell today / from my inventory?"
             (lower.includes('what') || lower.includes('which') || lower.includes('recommend') || lower.includes('best')) &&
             (lower.includes('sell') || lower.includes('item') || lower.includes('product') || lower.includes('today'))
-          ) {
-          } else if (
-            lower.includes('inventory') ||
-            lower.includes('menu') ||
-            lower.includes('products') ||
-            lower.includes('what do i have') ||
-            lower.includes('what i have') ||
-            lower.includes('on my shelf')
           ) {
             if (products.length === 0) {
               replyText = formatByAge(kidAgeGroup, {
