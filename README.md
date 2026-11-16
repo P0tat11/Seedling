@@ -22,7 +22,7 @@ Seedling stores family onboarding, shop inventory, and sales transactions in Neo
 
    `npm run db:migrate` pulls Vercel's Development variables and applies [`db/schema.sql`](./db/schema.sql). The `prestart` script refreshes the ignored `.env.local` before `vercel dev` starts. Open the URL printed by Vercel (normally `http://localhost:3000`).
 
-Do not put real credentials in `.env.example` or commit `.env.local`. For deployment, Vercel supplies the configured Production variable to the serverless functions. Apply schema changes to Neon before deploying code that depends on them.
+Keep `.env.local` out of source control. For deployment, Vercel supplies the configured Production variable to the serverless functions. Apply schema changes to Neon before deploying code that depends on them.
 
 ## Existing browser data
 
@@ -34,3 +34,6 @@ On this browser, Seedling offers a one-time import of data saved by the previous
 - `onboarding_data` and `account_preferences`: founder profile and app preferences.
 - `shops` and `inventory`: family-owned shops and products.
 - `transactions` and `transaction_items`: sales receipts and their product-line snapshots.
+- `business_guidelines`: account-owned coaching guidelines, ranked with PostgreSQL full-text search and included with live shop metrics in relevant coach requests.
+
+Open **Guidelines** in Seedling to add, edit, pause, or remove guidance for production, pricing, and sales decisions. Only active matching guidelines are retrieved for a coach question; numeric sales and inventory information continues to come from the shop data.

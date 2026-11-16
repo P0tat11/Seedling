@@ -104,5 +104,23 @@ CREATE TABLE IF NOT EXISTS transaction_items (
     REFERENCES transactions(account_id, id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS business_guidelines (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'General',
+  content TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  search_document TSVECTOR GENERATED ALWAYS AS (
+    setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(category, '')), 'B') ||
+    setweight(to_tsvector('english', coalesce(content, '')), 'C')
+  ) STORED,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS account_sessions_expiry_idx ON account_sessions(expires_at);
 CREATE INDEX IF NOT EXISTS transactions_shop_day_idx ON transactions(account_id, shop_id, day);
+CREATE INDEX IF NOT EXISTS business_guidelines_search_idx ON business_guidelines USING GIN(search_document);
+CREATE INDEX IF NOT EXISTS business_guidelines_account_idx ON business_guidelines(account_id, is_active, updated_at DESC);
