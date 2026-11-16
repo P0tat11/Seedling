@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS account_preferences (
   shop_open BOOLEAN NOT NULL DEFAULT true,
   forecast_weather TEXT NOT NULL DEFAULT 'cloudy',
   forecast_dow TEXT NOT NULL DEFAULT 'sun',
+  weather_api_enabled BOOLEAN NOT NULL DEFAULT true,
   ollama_url TEXT NOT NULL DEFAULT 'http://localhost:11434/api/chat',
   ollama_model TEXT NOT NULL DEFAULT 'llama3.2',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -48,6 +49,8 @@ ALTER TABLE account_preferences
   ADD COLUMN IF NOT EXISTS ollama_url TEXT NOT NULL DEFAULT 'http://localhost:11434/api/chat';
 ALTER TABLE account_preferences
   ADD COLUMN IF NOT EXISTS ollama_model TEXT NOT NULL DEFAULT 'llama3.2';
+ALTER TABLE account_preferences
+  ADD COLUMN IF NOT EXISTS weather_api_enabled BOOLEAN NOT NULL DEFAULT true;
 
 CREATE TABLE IF NOT EXISTS shops (
   account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
