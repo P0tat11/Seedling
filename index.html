@@ -2454,6 +2454,8 @@ Never invent prices, sales, goals, weather, or the founder's exact age. The onbo
 CRITICAL SAFETY RULE: Never output profanity, crude slang, or adult topics. Always stay G-rated and positive.`;
 
         let replyText = '';
+        let cloudErrorMessage = '';
+        let localErrorMessage = '';
         const chatHistory = [
           ...chatMessages.slice(-10).map((message) => ({
             role: message.role === 'user' ? 'user' : 'assistant',
@@ -2485,15 +2487,22 @@ CRITICAL SAFETY RULE: Never output profanity, crude slang, or adult topics. Alwa
               if (typeof candidateText === 'string' && candidateText.trim()) {
                 replyText = censorKidSafeText(candidateText.trim());
                 setAiEngineStatus('Ollama Cloud Ready');
+              } else {
+                cloudErrorMessage = 'Ollama Cloud returned an empty response.';
               }
             } else {
               const error = await res.json().catch(() => ({}));
+              cloudErrorMessage = error.error || `Ollama Cloud returned an error (${res.status}).`;
               console.warn(`AI Coach server request failed (${res.status}):`, error.error || 'Unknown error');
             }
           } finally {
             clearTimeout(timeoutId);
           }
         } catch (err) {
+          cloudErrorMessage =
+            err?.name === 'AbortError'
+              ? 'Ollama Cloud request timed out.'
+              : 'Could not reach Ollama Cloud.';
           console.error('AI Coach server request failed:', err);
         }
 
@@ -2522,18 +2531,30 @@ CRITICAL SAFETY RULE: Never output profanity, crude slang, or adult topics. Alwa
                 if (typeof ollamaReply === 'string' && ollamaReply.trim()) {
                   replyText = censorKidSafeText(ollamaReply.trim());
                   setAiEngineStatus(`Local Ollama (${ollamaModel})`);
+                  cloudErrorMessage = '';
+                  localErrorMessage = '';
+                } else {
+                  localErrorMessage = 'Local Ollama returned an empty response.';
                 }
+              } else {
+                localErrorMessage = `Local Ollama returned an error (${res.status}).`;
               }
             } finally {
               clearTimeout(timeoutId);
             }
           } catch (err) {
+            localErrorMessage =
+              err?.name === 'AbortError'
+                ? 'The local Ollama request timed out.'
+                : 'Could not reach local Ollama.';
             console.warn('Local Ollama request failed:', err?.name || 'Unknown error');
           }
         }
 
-        // Keep a useful offline fallback, but do not label it as an AI response.
-        if (!replyText) {
+        const hasModelReply = Boolean(replyText);
+
+        // Keep legacy quick tips out of the conversation when a provider reports an error.
+        if (!replyText && !cloudErrorMessage && !localErrorMessage) {
           setAiEngineStatus('Ollama Offline — Quick Tips');
           const lower = censoredUserText.toLowerCase();
           if (
@@ -2593,6 +2614,16 @@ CRITICAL SAFETY RULE: Never output profanity, crude slang, or adult topics. Alwa
           } else {
             replyText = 'I could not reach the AI service just now, so I do not have a good answer to that yet. Please try again in a moment.';
           }
+        }
+
+        if (!hasModelReply) {
+          setAiEngineStatus('AI Offline');
+          const errors = [cloudErrorMessage, localErrorMessage].filter(Boolean);
+          replyText = `I couldn't get an answer from the AI service. ${errors.join(' ')} ${
+            cloudErrorMessage.includes('not configured')
+              ? 'The app owner needs to configure Ollama Cloud on the server.'
+              : 'Check the AI settings or try again when the service is available.'
+          }`;
         }
 
         setChatMessages((prev) => [
