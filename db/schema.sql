@@ -39,8 +39,6 @@ CREATE TABLE IF NOT EXISTS account_preferences (
   shop_open BOOLEAN NOT NULL DEFAULT true,
   forecast_weather TEXT NOT NULL DEFAULT 'cloudy',
   forecast_dow TEXT NOT NULL DEFAULT 'sun',
-  ollama_url TEXT NOT NULL DEFAULT 'http://localhost:11434/api/chat',
-  ollama_model TEXT NOT NULL DEFAULT 'llama3.2',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
