@@ -820,7 +820,7 @@
         bullets: [
           'Ask questions or try the suggested prompts for weather, new menu ideas, sign ideas, and the Bundle Master badge.',
           'See the weather and choose a forecast for planning. The coach also uses your shop goals and sales insights to offer suggestions.',
-          'Rename your assistant here. The AI Coach securely connects to Fireworks through the app server.'
+          'Use Ollama Cloud through the app server or connect to Ollama running on your own computer.'
         ]
       },
       {
@@ -1663,7 +1663,9 @@
       const [chatMessages, setChatMessages] = useState([]);
       const [isAiTyping, setIsAiTyping] = useState(false);
 
-      const [aiEngineStatus, setAiEngineStatus] = useState('Fireworks AI');
+      const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434/api/chat');
+      const [ollamaModel, setOllamaModel] = useState('llama3.2');
+      const [aiEngineStatus, setAiEngineStatus] = useState('Ollama AI');
 
       // Cash Register Tips, Bundle Badge & Confetti State
       const [tipAmount, setTipAmount] = useState(0);
@@ -1702,6 +1704,8 @@
         setProducts(state.products ?? []);
         setActiveDay(state.activeDay ?? 1);
         setSalesLog(state.salesLog ?? []);
+        setOllamaUrl(state.ollamaUrl ?? 'http://localhost:11434/api/chat');
+        setOllamaModel(state.ollamaModel ?? 'llama3.2');
         setForecastWeather(state.forecastWeather ?? 'cloudy');
         setForecastDow(state.forecastDow ?? 'sun');
         setEarnedBadges(state.earnedBadges ?? []);
@@ -1858,6 +1862,8 @@
           products,
           activeDay,
           salesLog,
+          ollamaUrl,
+          ollamaModel,
           forecastWeather,
           forecastDow,
           earnedBadges,
@@ -1948,6 +1954,8 @@
         products,
         activeDay,
         salesLog,
+        ollamaUrl,
+        ollamaModel,
         forecastWeather,
         forecastDow,
         earnedBadges,
@@ -2455,9 +2463,9 @@ CRITICAL SAFETY RULE: Never output profanity, crude slang, or adult topics. Alwa
         ];
         const coachContext = buildCoachContext();
 
-        setAiEngineStatus('AI Coach Connecting...');
+        setAiEngineStatus('Ollama Connecting...');
 
-        // Fireworks runs server-side so its API key is never sent to the browser.
+        // Use Ollama Cloud first; its API key stays on the server.
         try {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 20000);
@@ -2476,7 +2484,7 @@ CRITICAL SAFETY RULE: Never output profanity, crude slang, or adult topics. Alwa
               const candidateText = data?.choices?.[0]?.message?.content;
               if (typeof candidateText === 'string' && candidateText.trim()) {
                 replyText = censorKidSafeText(candidateText.trim());
-                setAiEngineStatus('Fireworks AI Ready');
+                setAiEngineStatus('Ollama Cloud Ready');
               }
             } else {
               const error = await res.json().catch(() => ({}));
@@ -2489,9 +2497,44 @@ CRITICAL SAFETY RULE: Never output profanity, crude slang, or adult topics. Alwa
           console.error('AI Coach server request failed:', err);
         }
 
+        // Use a local Ollama server when Cloud is unavailable or not configured.
+        if (!replyText) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            try {
+              const res = await fetch(ollamaUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal,
+                body: JSON.stringify({
+                  model: ollamaModel || 'llama3.2',
+                  stream: false,
+                  messages: [
+                    { role: 'system', content: `${systemPrompt}\nSeedling data: ${JSON.stringify(coachContext)}` },
+                    ...chatHistory
+                  ]
+                })
+              });
+              if (res.ok) {
+                const data = await res.json();
+                const ollamaReply = data?.message?.content || data?.response;
+                if (typeof ollamaReply === 'string' && ollamaReply.trim()) {
+                  replyText = censorKidSafeText(ollamaReply.trim());
+                  setAiEngineStatus(`Local Ollama (${ollamaModel})`);
+                }
+              }
+            } finally {
+              clearTimeout(timeoutId);
+            }
+          } catch (err) {
+            console.warn('Local Ollama request failed:', err?.name || 'Unknown error');
+          }
+        }
+
         // Keep a useful offline fallback, but do not label it as an AI response.
         if (!replyText) {
-          setAiEngineStatus('Quick Tips (AI offline)');
+          setAiEngineStatus('Ollama Offline — Quick Tips');
           const lower = censoredUserText.toLowerCase();
           if (
             lower.includes('how old am i') ||
@@ -3111,6 +3154,10 @@ CRITICAL SAFETY RULE: Never output profanity, crude slang, or adult topics. Alwa
                   setForecastWeather={setForecastWeather}
                   forecastDow={forecastDow}
                   setForecastDow={setForecastDow}
+                  ollamaUrl={ollamaUrl}
+                  setOllamaUrl={setOllamaUrl}
+                  ollamaModel={ollamaModel}
+                  setOllamaModel={setOllamaModel}
                   aiEngineStatus={aiEngineStatus}
                   chatMessages={chatMessages}
                   isAiTyping={isAiTyping}
@@ -3799,6 +3846,10 @@ CRITICAL SAFETY RULE: Never output profanity, crude slang, or adult topics. Alwa
       setForecastWeather,
       forecastDow,
       setForecastDow,
+      ollamaUrl,
+      setOllamaUrl,
+      ollamaModel,
+      setOllamaModel,
       aiEngineStatus,
       chatMessages,
       isAiTyping,
@@ -3808,6 +3859,7 @@ CRITICAL SAFETY RULE: Never output profanity, crude slang, or adult topics. Alwa
       onBackHome
     }) {
       const [inputText, setInputText] = useState('');
+      const [showOllamaConfig, setShowOllamaConfig] = useState(false);
       const [isRenamingAssistant, setIsRenamingAssistant] = useState(false);
       const [draftAssistantName, setDraftAssistantName] = useState(assistantDisplayName);
 
@@ -3908,7 +3960,43 @@ CRITICAL SAFETY RULE: Never output profanity, crude slang, or adult topics. Alwa
                   </div>
                 </div>
 
+                <button
+                  type="button"
+                  onClick={() => setShowOllamaConfig(!showOllamaConfig)}
+                  className={`px-3 py-1 rounded-full border text-[11px] font-black cursor-pointer ${theme.pillBg}`}
+                >
+                  Ollama Config
+                </button>
               </div>
+
+              {showOllamaConfig && (
+                <div
+                  className={`mt-3 p-3.5 rounded-2xl border ${theme.innerCream} grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs`}
+                >
+                  <div>
+                    <label className="block font-extrabold mb-1">Local Ollama API Endpoint</label>
+                    <input
+                      type="text"
+                      value={ollamaUrl}
+                      onChange={(e) => setOllamaUrl(e.target.value)}
+                      className={`w-full px-3 py-1.5 rounded-xl border font-mono text-xs ${theme.inputBg}`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-extrabold mb-1">Local Ollama Model Name</label>
+                    <input
+                      type="text"
+                      value={ollamaModel}
+                      onChange={(e) => setOllamaModel(e.target.value)}
+                      placeholder="llama3.2"
+                      className={`w-full px-3 py-1.5 rounded-xl border font-mono text-xs ${theme.inputBg}`}
+                    />
+                  </div>
+                  <p className="sm:col-span-2 opacity-75">
+                    These settings connect to Ollama running on this device. Ollama Cloud is configured by the app owner.
+                  </p>
+                </div>
+              )}
 
               {/* Scrollable Chat History Filling Full Card Area */}
               <div className="flex-1 min-h-[300px] max-h-[460px] overflow-y-auto seedling-scroll space-y-3 py-4 pr-1">
