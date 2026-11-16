@@ -2299,40 +2299,44 @@ Live Shop Data:
 - Products in Menu: ${products.map((p) => `${censorKidSafeText(p.name)} ($${p.price.toFixed(2)})`).join(', ') || 'None added yet'}`;
 
         let replyText = '';
+        const chatHistory = [
+          ...chatMessages.slice(-4).map((message) => ({
+            role: message.role === 'user' ? 'user' : 'assistant',
+            content: censorKidSafeText(message.text)
+          })),
+          { role: 'user', content: censoredUserText }
+        ];
 
-        // 1. Try Gemini Flash API first
+        setAiEngineStatus('AI Coach Connecting...');
+
+        // Use the server-side AI providers so keys stay private and hosted chats do not
+        // mistakenly try to reach Ollama on the visitor's own computer.
         try {
-          const apiKey = '';
-          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
-          const res = await fetch(geminiUrl, {
+          const timeoutId = setTimeout(() => controller.abort(), 20000);
+          const res = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             signal: controller.signal,
             body: JSON.stringify({
-              systemInstruction: { parts: [{ text: systemPrompt }] },
-              contents: [
-                ...chatMessages.slice(-4).map((m) => ({
-                  role: m.role === 'user' ? 'user' : 'model',
-                  parts: [{ text: censorKidSafeText(m.text) }]
-                })),
-                { role: 'user', parts: [{ text: censoredUserText }] }
-              ]
+              model: 'openai-fast',
+              messages: [{ role: 'system', content: systemPrompt }, ...chatHistory]
             })
           });
           clearTimeout(timeoutId);
           if (res.ok) {
             const data = await res.json();
-            const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (candidateText) {
+            const candidateText = data?.choices?.[0]?.message?.content;
+            if (typeof candidateText === 'string' && candidateText.trim()) {
               replyText = censorKidSafeText(candidateText.trim());
               setAiEngineStatus('AI Coach Ready');
             }
           }
-        } catch (err) {}
+        } catch (err) {
+          console.error('AI Coach server request failed:', err);
+        }
 
-        // 2. Try local Ollama server if Gemini wasn't available
+        // Optionally try Ollama running on the same device as the browser.
         if (!replyText) {
           try {
             const controller = new AbortController();
@@ -2346,7 +2350,7 @@ Live Shop Data:
                 stream: false,
                 messages: [
                   { role: 'system', content: systemPrompt },
-                  { role: 'user', content: censoredUserText }
+                  ...chatHistory
                 ]
               })
             });
@@ -2362,9 +2366,9 @@ Live Shop Data:
           } catch (err) {}
         }
 
-        // 3. Guaranteed Smart Local Coach Response
+        // Keep a useful offline fallback, but do not label it as an AI response.
         if (!replyText) {
-          setAiEngineStatus('AI Coach Ready');
+          setAiEngineStatus('Quick Tips (AI offline)');
           const lower = censoredUserText.toLowerCase();
           if (lower.includes('weather') || lower.includes('temp') || lower.includes('outside')) {
             replyText = `It's currently ${liveWeatherInfo.tempF}°F (${liveWeatherInfo.condition}) outside! ${
