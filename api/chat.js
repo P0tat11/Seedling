@@ -121,8 +121,5 @@ module.exports = async function handler(req, res) {
     }
   } catch (err) {}
 
-  // 5. Return 200 with empty choice so frontend seamlessly uses its conversational smart coach
-  return res.status(200).json({
-    choices: [{ message: { role: 'assistant', content: '' } }]
-  });
+  return res.status(503).json({ error: 'AI providers are temporarily unavailable.' });
 };
