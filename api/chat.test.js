@@ -96,6 +96,7 @@ test('Ollama Cloud receives all shop context without private account fields', as
             founderName: 'Founder',
             ageGroup: '13+',
             activeShopId: 'shop-1',
+            weatherApiEnabled: false,
             parentContact: 'private@example.test',
             shops: [
               {
@@ -128,6 +129,8 @@ test('Ollama Cloud receives all shop context without private account fields', as
     assert.match(systemMessage.content, /Makers Market/);
     assert.match(systemMessage.content, /Bracelets/);
     assert.match(systemMessage.content, /"totalRevenue":8/);
+    assert.match(systemMessage.content, /"weatherApiEnabled":false/);
+    assert.match(systemMessage.content, /current weather is unavailable/);
     assert.doesNotMatch(systemMessage.content, /private@example\.test/);
   } finally {
     globalThis.fetch = originalFetch;
