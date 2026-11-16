@@ -1,46 +1,28 @@
 # Seedling
+**Track:** Finance
+**Team:** Rahul Goplani, Avya Sahu, And Anvesha Anand
+# The problem
+Young people who want to run a small shop often need help turning an idea into a practical plan: what to sell, how to price it, and how sales connect to a savings goal. Generic advice can be hard to apply, especially when it does not reflect the young person's actual menu, costs, or sales.
+# What we built
+Seedling is a shop-planning and sales-tracking app for young entrepreneurs. A founder enters an age group, shop details, savings goal, schedule, supply costs, and products; they can then record sales in a register and review revenue, profit, progress, badges, and suggested ways to divide earnings. The AI Coach can answer questions using the saved shop data, current weather, and selected age group.
+# How it works
+**Data:** There is no fixed training dataset. The app uses shop and sales data entered by each user; the number of records varies by account. The coach receives a structured, type-checked snapshot of the user's shops, products, goals, sales summaries, recent receipts, cart, weather, and age group. Parent contact details and account credentials are excluded. There is no dataset-wide cleaning step because these are live app records; the server limits and normalizes fields before including them in the AI prompt.
+**Model:** The AI Coach uses Ollama Cloud through its chat-completions API. The default model is `gemma4:31b`, configurable with the server-side `OLLAMA_MODEL` setting. If Cloud is unavailable, the browser can optionally try Ollama running locally on that user's device (default model `llama3.2`). We use a language model so the coach can respond conversationally while using the founder's current shop context; Seedling does not train or fine-tune a model.
+# Results 
 
-Seedling stores family onboarding, shop inventory, and sales transactions in Neon PostgreSQL. Family accounts are authenticated by the server; passwords are hashed and browser sessions use HttpOnly cookies.
 
-## Set up Neon
+# What we'd do next
+- Build a reviewed set of realistic shop questions and expected criteria, then evaluate answer relevance, factual accuracy against shop records, and age-appropriate tone across all onboarding age groups.
+- Add stronger validation for advice involving prices and profit, and improve the coach's error and retry experience when Ollama Cloud is unavailable.
 
-1. Add `DATABASE_URL` to the Vercel project's Environment Variables. Enable it for **Development** (and Production when deploying); keep it server-side.
-2. Sign in to Vercel and link this checkout to the project once:
+### Sources
 
-   ```sh
-   npx vercel login
-   npx vercel link
-   ```
+- [Ollama Cloud](https://docs.ollama.com/cloud) and [Ollama API keys](https://docs.ollama.com/cloud/api.md) — hosted model inference.
+- [Ollama OpenAI compatibility](https://docs.ollama.com/api/openai-compatibility) — chat-completions API format.
+- [Ollama Cloud models](https://docs.ollama.com/cloud/models.md) — available models; the configured default is `gemma4:31b`.
+- [Open-Meteo Forecast API](https://open-meteo.com/en/docs) — live weather data used by the app.
+- [Neon](https://neon.tech/docs) — PostgreSQL database; [Vercel](https://vercel.com/docs) — app development and deployment.
+- [React](https://react.dev/) and [Tailwind CSS](https://tailwindcss.com/docs) — interface libraries; the app also uses [Babel Standalone](https://babeljs.io/docs/babel-standalone) to compile JSX in the browser.
+- AI coding assistance: GitHub Copilot.
 
-3. Install dependencies, apply the schema to Neon, and start the app:
 
-   ```sh
-   npm install
-   npm run db:migrate
-   npm start
-   ```
-
-   `npm run db:migrate` pulls Vercel's Development variables and applies [`db/schema.sql`](./db/schema.sql). The `prestart` script refreshes the ignored `.env.local` before `vercel dev` starts. Open the URL printed by Vercel (normally `http://localhost:3000`).
-
-Do not put real credentials in `.env.example` or commit `.env.local`. For deployment, Vercel supplies the configured Production variable to the serverless functions. Apply schema changes to Neon before deploying code that depends on them.
-
-## Configure the Ollama AI Coach
-
-For Ollama Cloud, create an API key at [ollama.com/settings/keys](https://ollama.com/settings/keys). In the linked Vercel project's **Settings → Environment Variables**, add `OLLAMA_API_KEY` and select **Development** for local app testing and **Production** for the deployed app. Never put the key in browser code or a committed file. Optionally set `OLLAMA_MODEL` to a model available to your Ollama account; the default is `gemma4:31b`. Restart `npm start` after updating Development variables and redeploy after updating Production variables.
-
-The server calls Ollama Cloud at `https://ollama.com/v1/chat/completions`. If Cloud is unavailable or not configured, the coach can try a local Ollama server on the user's own computer. Install and start Ollama there, pull a model such as `llama3.2`, and set the endpoint and model in **AI Coach → Ollama Config**. A local Ollama server is only available to that same device/browser; it is not shared with the hosted app.
-
-## Existing browser data
-
-On this browser, Seedling offers a one-time import of data saved by the previous localStorage version. Import requires the contact and password already stored with that data. The import action sends the data to the authenticated API and removes the old browser copy after a successful import. Existing database data is never overwritten by an import.
-
-## Data tables
-
-- `accounts` and `account_sessions`: account credentials and hashed, expiring sessions.
-- `onboarding_data` and `account_preferences`: founder profile and app preferences.
-- `shops` and `inventory`: family-owned shops and products.
-- `transactions` and `transaction_items`: sales receipts and their product-line snapshots.
-
-## AI Coach context
-
-The authenticated AI Coach receives the selected age group, current app settings, all shops and their inventory, sales summaries and recent receipts, and the active register cart. Parent contact details, account credentials, and login contact information are not included. Chat context is sent to Ollama Cloud or, when configured, the user's local Ollama server to generate a reply.
