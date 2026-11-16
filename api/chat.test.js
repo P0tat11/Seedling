@@ -23,9 +23,9 @@ function createResponse() {
 test('AI chat requires an authenticated Seedling session', async () => {
   const response = createResponse();
   const originalSql = globalThis.seedlingSql;
-  const originalKey = process.env.FIREWORKS_API_KEY;
+  const originalKey = process.env.OLLAMA_API_KEY;
   globalThis.seedlingSql = async () => [];
-  process.env.FIREWORKS_API_KEY = 'test-fireworks-key';
+  process.env.OLLAMA_API_KEY = 'test-ollama-key';
   try {
     await handler({ method: 'POST', headers: {}, body: { messages: [] } }, response);
 
@@ -33,17 +33,17 @@ test('AI chat requires an authenticated Seedling session', async () => {
     assert.match(response.payload.error, /sign in/i);
   } finally {
     globalThis.seedlingSql = originalSql;
-    if (originalKey === undefined) delete process.env.FIREWORKS_API_KEY;
-    else process.env.FIREWORKS_API_KEY = originalKey;
+    if (originalKey === undefined) delete process.env.OLLAMA_API_KEY;
+    else process.env.OLLAMA_API_KEY = originalKey;
   }
 });
 
-test('AI chat reports missing Fireworks configuration to an authenticated user', async () => {
+test('AI chat reports missing Ollama Cloud configuration to an authenticated user', async () => {
   const response = createResponse();
   const originalSql = globalThis.seedlingSql;
-  const originalKey = process.env.FIREWORKS_API_KEY;
+  const originalKey = process.env.OLLAMA_API_KEY;
   globalThis.seedlingSql = async () => [{ account_id: 'account-1' }];
-  delete process.env.FIREWORKS_API_KEY;
+  delete process.env.OLLAMA_API_KEY;
   try {
     await handler(
       { method: 'POST', headers: { cookie: 'seedling_session=test-session' }, body: { messages: [] } },
@@ -51,23 +51,24 @@ test('AI chat reports missing Fireworks configuration to an authenticated user',
     );
 
     assert.equal(response.statusCode, 503);
-    assert.match(response.payload.error, /FIREWORKS_API_KEY/);
+    assert.match(response.payload.error, /OLLAMA_API_KEY/);
   } finally {
     globalThis.seedlingSql = originalSql;
-    if (originalKey === undefined) delete process.env.FIREWORKS_API_KEY;
-    else process.env.FIREWORKS_API_KEY = originalKey;
+    if (originalKey === undefined) delete process.env.OLLAMA_API_KEY;
+    else process.env.OLLAMA_API_KEY = originalKey;
   }
 });
 
-test('Fireworks receives all shop context without private account fields', async () => {
+test('Ollama Cloud receives all shop context without private account fields', async () => {
   const originalSql = globalThis.seedlingSql;
   const originalFetch = globalThis.fetch;
-  const originalKey = process.env.FIREWORKS_API_KEY;
-  const originalModel = process.env.FIREWORKS_MODEL;
+  const originalKey = process.env.OLLAMA_API_KEY;
+  const originalModel = process.env.OLLAMA_MODEL;
   let providerRequest;
   let requestUrl;
   let requestHeaders;
-  process.env.FIREWORKS_API_KEY = 'test-fireworks-key';
+  process.env.OLLAMA_API_KEY = 'test-ollama-key';
+  delete process.env.OLLAMA_MODEL;
   globalThis.seedlingSql = async () => [{ account_id: 'account-1' }];
   globalThis.fetch = async (url, options) => {
     requestUrl = url;
@@ -120,9 +121,9 @@ test('Fireworks receives all shop context without private account fields', async
     );
 
     assert.equal(response.statusCode, 200);
-    assert.equal(requestUrl, 'https://api.fireworks.ai/inference/v1/chat/completions');
-    assert.equal(requestHeaders.Authorization, 'Bearer test-fireworks-key');
-    assert.equal(providerRequest.model, 'accounts/fireworks/models/glm-5p3-flash');
+    assert.equal(requestUrl, 'https://ollama.com/v1/chat/completions');
+    assert.equal(requestHeaders.Authorization, 'Bearer test-ollama-key');
+    assert.equal(providerRequest.model, 'gemma4:31b');
     const systemMessage = providerRequest.messages.find((message) => message.role === 'system');
     assert.match(systemMessage.content, /Makers Market/);
     assert.match(systemMessage.content, /Bracelets/);
@@ -131,9 +132,9 @@ test('Fireworks receives all shop context without private account fields', async
   } finally {
     globalThis.fetch = originalFetch;
     globalThis.seedlingSql = originalSql;
-    if (originalKey === undefined) delete process.env.FIREWORKS_API_KEY;
-    else process.env.FIREWORKS_API_KEY = originalKey;
-    if (originalModel === undefined) delete process.env.FIREWORKS_MODEL;
-    else process.env.FIREWORKS_MODEL = originalModel;
+    if (originalKey === undefined) delete process.env.OLLAMA_API_KEY;
+    else process.env.OLLAMA_API_KEY = originalKey;
+    if (originalModel === undefined) delete process.env.OLLAMA_MODEL;
+    else process.env.OLLAMA_MODEL = originalModel;
   }
 });
