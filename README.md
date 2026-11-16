@@ -34,3 +34,7 @@ On this browser, Seedling offers a one-time import of data saved by the previous
 - `onboarding_data` and `account_preferences`: founder profile and app preferences.
 - `shops` and `inventory`: family-owned shops and products.
 - `transactions` and `transaction_items`: sales receipts and their product-line snapshots.
+
+## AI Coach context
+
+The authenticated AI Coach receives the selected age group, current app settings, all shops and their inventory, sales summaries and recent receipts, and the active register cart. Parent contact details, account credentials, and login contact information are not included. Chat context is sent to the configured AI provider (Ollama Cloud or Groq) or the Pollinations fallback service to generate a reply.
