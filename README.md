@@ -24,14 +24,11 @@ Seedling stores family onboarding, shop inventory, and sales transactions in Neo
 
 Do not put real credentials in `.env.example` or commit `.env.local`. For deployment, Vercel supplies the configured Production variable to the serverless functions. Apply schema changes to Neon before deploying code that depends on them.
 
-## Configure the Fireworks AI Coach
+## Configure the Ollama AI Coach
 
-1. Create a Fireworks account at [app.fireworks.ai](https://app.fireworks.ai/) and create an API key in [API Keys](https://app.fireworks.ai/settings/users/api-keys).
-2. In the linked Vercel project's **Settings → Environment Variables**, add `FIREWORKS_API_KEY` and paste the key as its value. Select **Development** for local testing and **Production** for the deployed app. Never add the key to `index.html`, browser code, or a committed file.
-3. Optionally add `FIREWORKS_MODEL` with a model ID available to your Fireworks account. If omitted, Seedling uses `accounts/fireworks/models/glm-5p3-flash`.
-4. Restart the local app (`npm start`) so Vercel refreshes the Development environment variables. Redeploy after setting Production variables.
+For Ollama Cloud, create an API key at [ollama.com/settings/keys](https://ollama.com/settings/keys). In the linked Vercel project's **Settings → Environment Variables**, add `OLLAMA_API_KEY` and select **Development** for local app testing and **Production** for the deployed app. Never put the key in browser code or a committed file. Optionally set `OLLAMA_MODEL` to a model available to your Ollama account; the default is `gemma4:31b`. Restart `npm start` after updating Development variables and redeploy after updating Production variables.
 
-The AI Coach sends chat requests from the server to Fireworks' OpenAI-compatible endpoint at `https://api.fireworks.ai/inference/v1/chat/completions`. It does not use Ollama or another provider as a fallback. Fireworks model availability and pricing can change; choose a currently available model in the [Fireworks model catalog](https://fireworks.ai/models).
+The server calls Ollama Cloud at `https://ollama.com/v1/chat/completions`. If Cloud is unavailable or not configured, the coach can try a local Ollama server on the user's own computer. Install and start Ollama there, pull a model such as `llama3.2`, and set the endpoint and model in **AI Coach → Ollama Config**. A local Ollama server is only available to that same device/browser; it is not shared with the hosted app.
 
 ## Existing browser data
 
@@ -46,4 +43,4 @@ On this browser, Seedling offers a one-time import of data saved by the previous
 
 ## AI Coach context
 
-The authenticated AI Coach receives the selected age group, current app settings, all shops and their inventory, sales summaries and recent receipts, and the active register cart. Parent contact details, account credentials, and login contact information are not included. Chat context is sent to Fireworks to generate a reply.
+The authenticated AI Coach receives the selected age group, current app settings, all shops and their inventory, sales summaries and recent receipts, and the active register cart. Parent contact details, account credentials, and login contact information are not included. Chat context is sent to Ollama Cloud or, when configured, the user's local Ollama server to generate a reply.
